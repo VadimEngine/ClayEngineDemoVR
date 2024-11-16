@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.6)
 
 project(Template)
 
-set(CMAKE_CXX_STANDARD 11) # TODO use higher c++
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -16,7 +16,7 @@ add_subdirectory(${OPENXR_SDK_SOURCE_DIR} openxr)
 file(GLOB_RECURSE SRC_FILES ${CMAKE_SOURCE_DIR}/main/cpp/*.cpp)
 
 # Collect all .cpp files in the cpp directory
-add_library(${CMAKE_PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME} SHARED
     ${SRC_FILES}
     # Add ImGui source files and Android native app glue
     ${CMAKE_SOURCE_DIR}/ThirdParty/imgui/imgui.cpp
@@ -26,7 +26,6 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
     ${CMAKE_SOURCE_DIR}/ThirdParty/imgui/imgui_widgets.cpp
     ${CMAKE_SOURCE_DIR}/ThirdParty/imgui/backends/imgui_impl_android.cpp
     ${CMAKE_SOURCE_DIR}/ThirdParty/imgui/backends/imgui_impl_opengl3.cpp
-    ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c
 )
 
 set(CMAKE_SHARED_LINKER_FLAGS
@@ -34,19 +33,30 @@ set(CMAKE_SHARED_LINKER_FLAGS
 )
 
 # Specify include directories for third-party libraries
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/main/cpp
     ${CMAKE_SOURCE_DIR}/ThirdParty/imgui
     ${CMAKE_SOURCE_DIR}/ThirdParty/imgui/backends
     ${CMAKE_SOURCE_DIR}/ThirdParty/glm
-    ${ANDROID_NDK}/sources/android/native_app_glue
 )
 
+# export ANativeActivity_onCreate for java to call.
+set_property(
+    TARGET ${PROJECT_NAME}
+    APPEND_STRING
+    PROPERTY LINK_FLAGS " -u ANativeActivity_onCreate"
+)
+
+# native_app_glue
+include(AndroidNdkModules)
+android_ndk_import_module_native_app_glue()
+
 # Link libraries to your native library
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
+target_link_libraries(${PROJECT_NAME} PRIVATE
     android
     EGL
     GLESv3
     log
     openxr_loader
+    native_app_glue
 )
