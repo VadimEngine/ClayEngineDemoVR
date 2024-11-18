@@ -26,7 +26,7 @@ void SampleGUI::buildImGui() {
         ImGui::Text("This is some useful text.");
 
         ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-        ImGui::ColorEdit3("clear color",(float *) &clear_color);
+        ImGui::ColorEdit3("clear color",(float*) &clear_color);
 
         if (ImGui::Button("Button"))
             counter++;

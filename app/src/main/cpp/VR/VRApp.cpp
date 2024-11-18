@@ -1,7 +1,7 @@
 #include "VRApp.h"
 
-void VRApp::AndroidAppHandleCmd(struct android_app *app, int32_t cmd) {
-    AndroidAppState *appState = (AndroidAppState*)app->userData;
+void VRApp::AndroidAppHandleCmd(struct android_app* app, int32_t cmd) {
+    AndroidAppState* appState = (AndroidAppState*)app->userData;
 
     switch (cmd) {
         // There is no APP_CMD_CREATE. The ANativeActivity creates the application thread from onCreate().
@@ -36,14 +36,37 @@ void VRApp::AndroidAppHandleCmd(struct android_app *app, int32_t cmd) {
     }
 }
 
+std::string VRApp::loadShaderFromAssets(const char* filePath) {
+    // Open the file using the AssetManager
+    AAsset* asset = AAssetManager_open(androidApp->activity->assetManager, filePath, AASSET_MODE_BUFFER);
+    if (!asset) {
+        throw std::runtime_error("Failed to open shader file: " + std::string(filePath));
+    }
+
+    // Get the size of the file
+    size_t fileSize = AAsset_getLength(asset);
+
+    // Read the file contents into a buffer
+    std::string fileContent(fileSize, '\0');
+    AAsset_read(asset, fileContent.data(), fileSize);
+
+    // Close the asset
+    AAsset_close(asset);
+
+    return fileContent;
+}
+
 void VRApp::run() {
     createInstance();
-    createDebugMessenger();
     getInstanceProperties();
     getSystemID();
+    createActionSet();
+    suggestBindings();
     getViewConfigurationViews();
     getEnvironmentBlendModes();
     createSession();
+    createActionPoses();
+    attachActionSet();
     createReferenceSpace();
     createSwapchains();
     createResources();
@@ -130,18 +153,20 @@ void VRApp::createInstance() {
     xrCreateInstance(&instanceCI, &m_xrInstance);
 }
 
-void VRApp::createDebugMessenger() {}
-
 void VRApp::getInstanceProperties() {
     // Get the instance's properties and log the runtime name and version.
     XrInstanceProperties instanceProperties{XR_TYPE_INSTANCE_PROPERTIES};
     OPENXR_CHECK(xrGetInstanceProperties(m_xrInstance, &instanceProperties), "Failed to get InstanceProperties.");
-    __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s",  "OpenXR Runtime: " );
-
-//         std::cout << "OpenXR Runtime: " << instanceProperties.runtimeName << " - "
-//                                       << XR_VERSION_MAJOR(instanceProperties.runtimeVersion) << "."
-//                                       << XR_VERSION_MINOR(instanceProperties.runtimeVersion) << "."
-//                                       << XR_VERSION_PATCH(instanceProperties.runtimeVersion) << std::endl;
+    __android_log_print(
+            ANDROID_LOG_INFO,
+            "VRAPP",
+            "%s %s - %d.%d.%d",
+            "OpenXR Runtime: ",
+            instanceProperties.runtimeName,
+            XR_VERSION_MAJOR(instanceProperties.runtimeVersion),
+            XR_VERSION_MINOR(instanceProperties.runtimeVersion),
+            XR_VERSION_PATCH(instanceProperties.runtimeVersion)
+    );
 }
 
 void VRApp::getSystemID() {
@@ -272,12 +297,12 @@ void VRApp::createSwapchains() {
         // Get the number of images in the color/depth swapchain and allocate Swapchain image data via GraphicsAPI to store the returned array.
         uint32_t colorSwapchainImageCount = 0;
         OPENXR_CHECK(xrEnumerateSwapchainImages(colorSwapchainInfo.swapchain, 0, &colorSwapchainImageCount, nullptr), "Failed to enumerate Color Swapchain Images.");
-        XrSwapchainImageBaseHeader *colorSwapchainImages = m_graphicsAPI->allocateSwapchainImageData(colorSwapchainInfo.swapchain, GraphicsOpenGLES::SwapchainType::COLOR, colorSwapchainImageCount);
+        XrSwapchainImageBaseHeader* colorSwapchainImages = m_graphicsAPI->allocateSwapchainImageData(colorSwapchainInfo.swapchain, GraphicsOpenGLES::SwapchainType::COLOR, colorSwapchainImageCount);
         OPENXR_CHECK(xrEnumerateSwapchainImages(colorSwapchainInfo.swapchain, colorSwapchainImageCount, &colorSwapchainImageCount, colorSwapchainImages), "Failed to enumerate Color Swapchain Images.");
 
         uint32_t depthSwapchainImageCount = 0;
         OPENXR_CHECK(xrEnumerateSwapchainImages(depthSwapchainInfo.swapchain, 0, &depthSwapchainImageCount, nullptr), "Failed to enumerate Depth Swapchain Images.");
-        XrSwapchainImageBaseHeader *depthSwapchainImages = m_graphicsAPI->allocateSwapchainImageData(depthSwapchainInfo.swapchain, GraphicsOpenGLES::SwapchainType::DEPTH, depthSwapchainImageCount);
+        XrSwapchainImageBaseHeader* depthSwapchainImages = m_graphicsAPI->allocateSwapchainImageData(depthSwapchainInfo.swapchain, GraphicsOpenGLES::SwapchainType::DEPTH, depthSwapchainImageCount);
         OPENXR_CHECK(xrEnumerateSwapchainImages(depthSwapchainInfo.swapchain, depthSwapchainImageCount, &depthSwapchainImageCount, depthSwapchainImages), "Failed to enumerate Depth Swapchain Images.");
 
         // Per image in the swapchains, fill out a GraphicsAPI::ImageViewCreateInfo structure and create a color/depth image view.
@@ -295,7 +320,7 @@ void VRApp::createSwapchains() {
             colorSwapchainInfo.imageViews.push_back(m_graphicsAPI->createImageView(imageViewCI));
         }
         for (uint32_t j = 0; j < depthSwapchainImageCount; j++) {
-            GraphicsOpenGLES::ImageViewCreateInfo imageViewCI;
+            GraphicsOpenGLES::ImageViewCreateInfo imageViewCI{};
             imageViewCI.image = m_graphicsAPI->getSwapchainImage(depthSwapchainInfo.swapchain, j);
             imageViewCI.type = GraphicsOpenGLES::ImageViewCreateInfo::Type::DSV;
             imageViewCI.view = GraphicsOpenGLES::ImageViewCreateInfo::View::TYPE_2D;
@@ -348,9 +373,9 @@ void VRApp::createResources() {
     m_uniformBuffer_Camera = m_graphicsAPI->createBuffer({GraphicsOpenGLES::BufferCreateInfo::Type::UNIFORM, 0, sizeof(CameraConstants) * numberOfCuboids, nullptr});
     m_uniformBuffer_Normals = m_graphicsAPI->createBuffer({GraphicsOpenGLES::BufferCreateInfo::Type::UNIFORM, 0, sizeof(normals), &normals});
 
-    std::string vertexSource = GraphicsOpenGLES::vertexShaderSource;
+    std::string vertexSource = loadShaderFromAssets("Shaders/Vert.vert");
     m_vertexShader = m_graphicsAPI->createShader({GraphicsOpenGLES::ShaderCreateInfo::Type::VERTEX, vertexSource.data(), vertexSource.size()});
-    std::string fragmentSource = GraphicsOpenGLES::fragmentShaderSource;
+    std::string fragmentSource = loadShaderFromAssets("Shaders/Frag.frag");
     m_fragmentShader = m_graphicsAPI->createShader({GraphicsOpenGLES::ShaderCreateInfo::Type::FRAGMENT, fragmentSource.data(), fragmentSource.size()});
 
     GraphicsOpenGLES::PipelineCreateInfo pipelineCI;
@@ -368,6 +393,28 @@ void VRApp::createResources() {
                          {1, nullptr, GraphicsOpenGLES::DescriptorInfo::Type::BUFFER, GraphicsOpenGLES::DescriptorInfo::Stage::VERTEX},
                          {2, nullptr, GraphicsOpenGLES::DescriptorInfo::Type::BUFFER, GraphicsOpenGLES::DescriptorInfo::Stage::FRAGMENT}};
     m_pipeline = m_graphicsAPI->createPipeline(pipelineCI);
+
+    // second pipeline
+    std::string vertexSource2 = loadShaderFromAssets("Shaders/Vert2.vert");
+    m_vertexShader2 = m_graphicsAPI->createShader({GraphicsOpenGLES::ShaderCreateInfo::Type::VERTEX, vertexSource2.data(), vertexSource2.size()});
+    std::string fragmentSource2 = loadShaderFromAssets("Shaders/Frag2.frag");
+    m_fragmentShader2 = m_graphicsAPI->createShader({GraphicsOpenGLES::ShaderCreateInfo::Type::FRAGMENT, fragmentSource2.data(), fragmentSource2.size()});
+
+    GraphicsOpenGLES::PipelineCreateInfo pipelineCI2;
+    pipelineCI2.shaders = {m_vertexShader2, m_fragmentShader2};
+    pipelineCI2.vertexInputState.attributes = {{0, 0, GraphicsOpenGLES::VertexType::VEC4, 0, "TEXCOORD"}};
+    pipelineCI2.vertexInputState.bindings = {{0, 0, 4 * sizeof(float)}};
+    pipelineCI2.inputAssemblyState = {GraphicsOpenGLES::PrimitiveTopology::TRIANGLE_LIST, false};
+    pipelineCI2.rasterisationState = {false, false, GraphicsOpenGLES::PolygonMode::FILL, GraphicsOpenGLES::CullMode::BACK, GraphicsOpenGLES::FrontFace::COUNTER_CLOCKWISE, false, 0.0f, 0.0f, 0.0f, 1.0f};
+    pipelineCI2.multisampleState = {1, false, 1.0f, 0xFFFFFFFF, false, false};
+    pipelineCI2.depthStencilState = {true, true, GraphicsOpenGLES::CompareOp::LESS_OR_EQUAL, false, false, {}, {}, 0.0f, 1.0f};
+    pipelineCI2.colorBlendState = {false, GraphicsOpenGLES::LogicOp::NO_OP, {{true, GraphicsOpenGLES::BlendFactor::SRC_ALPHA, GraphicsOpenGLES::BlendFactor::ONE_MINUS_SRC_ALPHA, GraphicsOpenGLES::BlendOp::ADD, GraphicsOpenGLES::BlendFactor::ONE, GraphicsOpenGLES::BlendFactor::ZERO, GraphicsOpenGLES::BlendOp::ADD, (GraphicsOpenGLES::ColorComponentBit)15}}, {0.0f, 0.0f, 0.0f, 0.0f}};
+    pipelineCI2.colorFormats = {m_colorSwapchainInfos[0].swapchainFormat};
+    pipelineCI2.depthFormat = m_depthSwapchainInfos[0].swapchainFormat;
+    pipelineCI2.layout = {{0, nullptr, GraphicsOpenGLES::DescriptorInfo::Type::BUFFER, GraphicsOpenGLES::DescriptorInfo::Stage::VERTEX},
+                         {1, nullptr, GraphicsOpenGLES::DescriptorInfo::Type::BUFFER, GraphicsOpenGLES::DescriptorInfo::Stage::VERTEX},
+                         {2, nullptr, GraphicsOpenGLES::DescriptorInfo::Type::BUFFER, GraphicsOpenGLES::DescriptorInfo::Stage::FRAGMENT}};
+    m_pipeline2 = m_graphicsAPI->createPipeline(pipelineCI2);
 }
 
 void VRApp::pollSystemEvents() {
@@ -378,7 +425,7 @@ void VRApp::pollSystemEvents() {
     }
     while (true) {
         // Poll and process the Android OS system events.
-        struct android_poll_source *source = nullptr;
+        struct android_poll_source* source = nullptr;
         int events = 0;
         // The timeout depends on whether the application is active.
         const int timeoutMilliseconds = (!androidAppState.resumed && !m_sessionRunning && androidApp->destroyRequested == 0) ? -1 : 0;
@@ -403,32 +450,33 @@ void VRApp::pollEvents() {
         switch (eventData.type) {
             // Log the number of lost events from the runtime.
             case XR_TYPE_EVENT_DATA_EVENTS_LOST: {
-                XrEventDataEventsLost *eventsLost = reinterpret_cast<XrEventDataEventsLost *>(&eventData);
-                __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s",  "OPENXR: Events Lost: ");
+                XrEventDataEventsLost* eventsLost = reinterpret_cast<XrEventDataEventsLost*>(&eventData);
+                __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s%d",  "OPENXR: Events Lost: ", eventsLost->lostEventCount);
                 break;
             }
                 // Log that an instance loss is pending and shutdown the application.
             case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING: {
-                XrEventDataInstanceLossPending *instanceLossPending = reinterpret_cast<XrEventDataInstanceLossPending *>(&eventData);
-                __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s", "OPENXR: Instance Loss Pending at: ");
+                XrEventDataInstanceLossPending* instanceLossPending = reinterpret_cast<XrEventDataInstanceLossPending*>(&eventData);
+                __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s %lli", "OPENXR: Instance Loss Pending at: ", instanceLossPending->lossTime);
                 m_sessionRunning = false;
                 m_applicationRunning = false;
                 break;
             }
                 // Log that the interaction profile has changed.
             case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED: {
-                XrEventDataInteractionProfileChanged *interactionProfileChanged = reinterpret_cast<XrEventDataInteractionProfileChanged *>(&eventData);
-                __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s",   "OPENXR: Interaction Profile changed for Session: ");
+                XrEventDataInteractionProfileChanged* interactionProfileChanged = reinterpret_cast<XrEventDataInteractionProfileChanged*>(&eventData);
+                __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s %lli", "OPENXR: Interaction Profile changed for Session: ", interactionProfileChanged->session);
                 if (interactionProfileChanged->session != m_session) {
                     __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s",  "XrEventDataInteractionProfileChanged for unknown Session");
                     break;
                 }
+                RecordCurrentBindings();
                 break;
             }
                 // Log that there's a reference space change pending.
             case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING: {
-                XrEventDataReferenceSpaceChangePending *referenceSpaceChangePending = reinterpret_cast<XrEventDataReferenceSpaceChangePending *>(&eventData);
-                __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s",  "OPENXR: Reference Space Change pending for Session: ");
+                XrEventDataReferenceSpaceChangePending* referenceSpaceChangePending = reinterpret_cast<XrEventDataReferenceSpaceChangePending*>(&eventData);
+                __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s%lli",  "OPENXR: Reference Space Change pending for Session: ",  referenceSpaceChangePending->session);
 
                 if (referenceSpaceChangePending->session != m_session) {
                     __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s", "XrEventDataReferenceSpaceChangePending for unknown Session");
@@ -438,7 +486,7 @@ void VRApp::pollEvents() {
             }
                 // Session State changes:
             case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
-                XrEventDataSessionStateChanged *sessionStateChanged = reinterpret_cast<XrEventDataSessionStateChanged *>(&eventData);
+                XrEventDataSessionStateChanged* sessionStateChanged = reinterpret_cast<XrEventDataSessionStateChanged*>(&eventData);
                 if (sessionStateChanged->session != m_session) {
                     __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s", "XrEventDataSessionStateChanged for unknown Session");
                     break;
@@ -496,10 +544,12 @@ void VRApp::renderFrame() {
     // Check that the session is active and that we should render.
     bool sessionActive = (m_sessionState == XR_SESSION_STATE_SYNCHRONIZED || m_sessionState == XR_SESSION_STATE_VISIBLE || m_sessionState == XR_SESSION_STATE_FOCUSED);
     if (sessionActive && frameState.shouldRender) {
+        pollActions(frameState.predictedDisplayTime);
+
         // Render the stereo image and associate one of swapchain images with the XrCompositionLayerProjection structure.
         rendered = renderLayer(renderLayerInfo);
         if (rendered) {
-            renderLayerInfo.layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&renderLayerInfo.layerProjection));
+            renderLayerInfo.layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&renderLayerInfo.layerProjection));
         }
     }
 
@@ -519,10 +569,10 @@ void VRApp::destroySwapchains() {
         SwapchainInfo &depthSwapchainInfo = m_depthSwapchainInfos[i];
 
         // Destroy the color and depth image views from GraphicsAPI.
-        for (void *&imageView : colorSwapchainInfo.imageViews) {
+        for (void*& imageView : colorSwapchainInfo.imageViews) {
             m_graphicsAPI->destroyImageView(imageView);
         }
-        for (void *&imageView : depthSwapchainInfo.imageViews) {
+        for (void*& imageView : depthSwapchainInfo.imageViews) {
             m_graphicsAPI->destroyImageView(imageView);
         }
 
@@ -627,7 +677,11 @@ bool VRApp::renderLayer(RenderLayerInfo &renderLayerInfo) {
         }
         m_graphicsAPI->clearDepth(depthSwapchainInfo.imageViews[depthImageIndex], 1.0f);
 
-        m_graphicsAPI->setRenderAttachments(&colorSwapchainInfo.imageViews[colorImageIndex], 1, depthSwapchainInfo.imageViews[depthImageIndex], width, height, m_pipeline);
+        if (grabFlag) {
+            m_graphicsAPI->setRenderAttachments(&colorSwapchainInfo.imageViews[colorImageIndex], 1, depthSwapchainInfo.imageViews[depthImageIndex], width, height, m_pipeline);
+        } else {
+            m_graphicsAPI->setRenderAttachments(&colorSwapchainInfo.imageViews[colorImageIndex], 1, depthSwapchainInfo.imageViews[depthImageIndex], width, height, m_pipeline2);
+        }
         m_graphicsAPI->setViewports(&viewport, 1);
         m_graphicsAPI->setScissors(&scissor, 1);
 
@@ -674,7 +728,11 @@ void VRApp::renderCuboid(XrPosef pose, XrVector3f scale, XrVector3f color) {
     cameraConstants.color = {color.x, color.y, color.z, 1.0};
     size_t offsetCameraUB = sizeof(CameraConstants) * renderCuboidIndex;
 
-    m_graphicsAPI->setPipeline(m_pipeline);
+    if (grabFlag) {
+        m_graphicsAPI->setPipeline(m_pipeline);
+    } else {
+        m_graphicsAPI->setPipeline(m_pipeline2);
+    }
 
     m_graphicsAPI->setBufferData(m_uniformBuffer_Camera, offsetCameraUB, sizeof(CameraConstants), &cameraConstants);
     m_graphicsAPI->setDescriptor({0, m_uniformBuffer_Camera, GraphicsOpenGLES::DescriptorInfo::Type::BUFFER, GraphicsOpenGLES::DescriptorInfo::Stage::VERTEX, false, offsetCameraUB, sizeof(CameraConstants)});

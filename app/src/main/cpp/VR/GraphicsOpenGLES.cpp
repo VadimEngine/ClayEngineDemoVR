@@ -1,53 +1,7 @@
 #include "GraphicsOpenGLES.h"
 
-const char* GraphicsOpenGLES::vertexShaderSource = R"(
-#version 310 es
-
-layout(std140, binding = 0) uniform CameraConstants {
-    mat4 viewProj;
-    mat4 modelViewProj;
-    mat4 model;
-    vec4 colour;
-    vec4 pad1;
-    vec4 pad2;
-    vec4 pad3;
-};
-layout(std140, binding = 1) uniform Normals {
-    vec4 normals[6];
-};
-layout(location = 0) in highp vec4 a_Positions;
-layout(location = 0) out flat uvec2 o_TexCoord;
-layout(location = 1) out highp vec3 o_Normal;
-layout(location = 2) out flat vec3 o_Colour;
-void main() {
-    gl_Position = modelViewProj * a_Positions;
-    int face = gl_VertexID / 6;
-    o_TexCoord = uvec2(face, 0);
-    o_Normal = (model * normals[face]).xyz;
-    o_Colour = vec3(1,0,0);//colour.rgb;
-}
-)";
-
-const char* GraphicsOpenGLES::fragmentShaderSource = R"(
-#version 310 es
-
-layout(location = 0) in flat uvec2 i_TexCoord;
-layout(location = 1) in highp vec3 i_Normal;
-layout(location = 2) in flat highp vec3 i_Color;
-layout(location = 0) out highp vec4 o_Color;
-layout(std140, binding = 2) uniform Data {
-    highp vec4 colors[6];
-} d_Data;
-
-void main() {
-    uint i = i_TexCoord.x;
-    highp float light = 0.1 + 0.9 * clamp(i_Normal.g, 0.0, 1.0);
-    o_Color = highp vec4(light * i_Color.rgb, 1.0);
-}
-)";
-
 GraphicsOpenGLES::GraphicsOpenGLES(XrInstance m_xrInstance, XrSystemId systemId) {
-    OPENXR_CHECK(xrGetInstanceProcAddr(m_xrInstance, "xrGetOpenGLESGraphicsRequirementsKHR", (PFN_xrVoidFunction *)&xrGetOpenGLESGraphicsRequirementsKHR), "Failed to get InstanceProcAddr for xrGetOpenGLESGraphicsRequirementsKHR.");
+    OPENXR_CHECK(xrGetInstanceProcAddr(m_xrInstance, "xrGetOpenGLESGraphicsRequirementsKHR", (PFN_xrVoidFunction*)&xrGetOpenGLESGraphicsRequirementsKHR), "Failed to get InstanceProcAddr for xrGetOpenGLESGraphicsRequirementsKHR.");
     XrGraphicsRequirementsOpenGLESKHR graphicsRequirements{XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR};
     // CRASH HERE
     OPENXR_CHECK(xrGetOpenGLESGraphicsRequirementsKHR(m_xrInstance, systemId, &graphicsRequirements), "Failed to get Graphics Requirements for OpenGLES.");
@@ -130,7 +84,7 @@ int64_t GraphicsOpenGLES::selectColorSwapchainFormat(const std::vector<int64_t> 
     return *swapchainFormatIt;
 }
 
-void GraphicsOpenGLES::setPipeline(void *pipeline) {
+void GraphicsOpenGLES::setPipeline(void* pipeline) {
     GLuint program = (GLuint)(uint64_t)pipeline;
     glUseProgram(program);
     m_setPipeline = program;
@@ -314,7 +268,7 @@ void* GraphicsOpenGLES::createImageView(const ImageViewCreateInfo &imageViewCI) 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     imageViews[framebuffer] = imageViewCI;
-    return (void *)(uint64_t)framebuffer;
+    return (void*)(uint64_t)framebuffer;
 }
 
 int64_t GraphicsOpenGLES::selectDepthSwapchainFormat(const std::vector<int64_t> &formats) {
@@ -363,12 +317,12 @@ GLenum GraphicsOpenGLES::getGLTextureTarget(const ImageCreateInfo &imageCI) {
     } else if (imageCI.dimension == 3) {
         target = GL_TEXTURE_3D;
     } else {
-        __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s", "ERROR: OPENGL: Unknown Dimension for getGLTextureTarget(): " );
+        __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s%d", "ERROR: OPENGL: Unknown Dimension for getGLTextureTarget(): ", imageCI.dimension);
     }
     return target;
 }
 
-void GraphicsOpenGLES::setVertexBuffers(void **vertexBuffers, size_t count) {
+void GraphicsOpenGLES::setVertexBuffers(void** vertexBuffers, size_t count) {
     const VertexInputState &vertexInputState = pipelines[m_setPipeline].vertexInputState;
     for (size_t i = 0; i < count; i++) {
         GLuint glVertexBufferID = (GLuint)(uint64_t)vertexBuffers[i];
@@ -387,7 +341,7 @@ void GraphicsOpenGLES::setVertexBuffers(void **vertexBuffers, size_t count) {
                         GLenum type = (GLenum)vertexAttribute.vertexType >= (GLenum)VertexType::UINT ? GL_UNSIGNED_INT : (GLenum)vertexAttribute.vertexType >= (GLenum)VertexType::INT ? GL_INT
                                                                                                                                                                                        : GL_FLOAT;
                         GLsizei stride = vertexBinding.stride;
-                        const void *offset = (const void *)vertexAttribute.offset;
+                        const void* offset = (const void* )vertexAttribute.offset;
                         glEnableVertexAttribArray(attribIndex);
                         glVertexAttribPointer(attribIndex, size, type, false, stride, offset);
                     }
@@ -397,7 +351,7 @@ void GraphicsOpenGLES::setVertexBuffers(void **vertexBuffers, size_t count) {
     }
 }
 
-void GraphicsOpenGLES::setIndexBuffer(void *indexBuffer) {
+void GraphicsOpenGLES::setIndexBuffer(void* indexBuffer) {
     GLuint glIndexBufferID = (GLuint)(uint64_t)indexBuffer;
     if (buffers[glIndexBufferID].type != BufferCreateInfo::Type::INDEX) {
         __android_log_print(ANDROID_LOG_ERROR, "VRAPP", "%s",   "ERROR: OpenGL: Provided buffer is not type: INDEX." );
@@ -426,7 +380,7 @@ void GraphicsOpenGLES::setDescriptor(const DescriptorInfo &descriptorInfo) {
     }
 }
 
-void GraphicsOpenGLES::setBufferData(void *buffer, size_t offset, size_t size, void *data) {
+void GraphicsOpenGLES::setBufferData(void* buffer, size_t offset, size_t size, void* data) {
     GLuint glBuffer = (GLuint)(uint64_t)buffer;
     const BufferCreateInfo &bufferCI = buffers[glBuffer];
 
@@ -449,7 +403,7 @@ void GraphicsOpenGLES::setBufferData(void *buffer, size_t offset, size_t size, v
     }
 }
 
-void GraphicsOpenGLES::setRenderAttachments(void **colorViews, size_t colorViewCount, void *depthStencilView, uint32_t width, uint32_t height, void *pipeline) {
+void GraphicsOpenGLES::setRenderAttachments(void** colorViews, size_t colorViewCount, void* depthStencilView, uint32_t width, uint32_t height, void* pipeline) {
     // Reset Framebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDeleteFramebuffers(1, &setFramebuffer);
@@ -503,13 +457,13 @@ void* GraphicsOpenGLES::getGraphicsBinding() {
     return &graphicsBinding;
 }
 
-void GraphicsOpenGLES::setViewports(Viewport *viewports, size_t count) {
+void GraphicsOpenGLES::setViewports(Viewport* viewports, size_t count) {
     Viewport viewport = viewports[0];
     glViewport((GLint)viewport.x, (GLint)viewport.y, (GLsizei)viewport.width, (GLsizei)viewport.height);
     glDepthRangef(viewport.minDepth, viewport.maxDepth);
 }
 
-void GraphicsOpenGLES::setScissors(Rect2D *scissors, size_t count) {
+void GraphicsOpenGLES::setScissors(Rect2D* scissors, size_t count) {
     Rect2D scissor = scissors[0];
     glScissor((GLint)scissor.offset.x, (GLint)scissor.offset.y, (GLsizei)scissor.extent.width, (GLsizei)scissor.extent.height);
 }
@@ -535,7 +489,7 @@ void GraphicsOpenGLES::endRendering() {
 void* GraphicsOpenGLES::createPipeline(const PipelineCreateInfo &pipelineCI) {
     GLuint program = glCreateProgram();
 
-    for (const void *const &shader : pipelineCI.shaders)
+    for (const void* const &shader : pipelineCI.shaders)
         glAttachShader(program, (GLuint)(uint64_t)shader);
 
     glLinkProgram(program);
@@ -553,22 +507,22 @@ void* GraphicsOpenGLES::createPipeline(const PipelineCreateInfo &pipelineCI) {
         glDeleteProgram(program);
     }
 
-    for (const void *const &shader : pipelineCI.shaders)
+    for (const void* const &shader : pipelineCI.shaders)
         glDetachShader(program, (GLuint)(uint64_t)shader);
 
     pipelines[program] = pipelineCI;
 
-    return (void *)(uint64_t)program;
+    return (void*)(uint64_t)program;
 }
 
-void GraphicsOpenGLES::clearColor(void *imageView, float r, float g, float b, float a) {
+void GraphicsOpenGLES::clearColor(void* imageView, float r, float g, float b, float a) {
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)(uint64_t)imageView);
     glClearColor(r, g, b, a);
     glClear(GL_COLOR_BUFFER_BIT);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void GraphicsOpenGLES::clearDepth(void *imageView, float d) {
+void GraphicsOpenGLES::clearDepth(void* imageView, float d) {
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)(uint64_t)imageView);
     glClearDepthf(d);
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -595,7 +549,7 @@ void* GraphicsOpenGLES::createBuffer(const BufferCreateInfo &bufferCI) {
     glBindBuffer(target, 0);
 
     buffers[buffer] = bufferCI;
-    return (void *)(uint64_t)buffer;
+    return (void*)(uint64_t)buffer;
 }
 
 void* GraphicsOpenGLES::createShader(const ShaderCreateInfo &shaderCI) {
@@ -646,16 +600,16 @@ void* GraphicsOpenGLES::createShader(const ShaderCreateInfo &shaderCI) {
         glDeleteShader(shader);
         shader = 0;
     }
-    return (void *)(uint64_t)shader;
+    return (void*)(uint64_t)shader;
 }
 
 XrSwapchainImageBaseHeader* GraphicsOpenGLES::allocateSwapchainImageData(XrSwapchain swapchain, SwapchainType type, uint32_t count) {
     swapchainImagesMap[swapchain].first = type;
     swapchainImagesMap[swapchain].second.resize(count, {XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR});
-    return reinterpret_cast<XrSwapchainImageBaseHeader *>(swapchainImagesMap[swapchain].second.data());
+    return reinterpret_cast<XrSwapchainImageBaseHeader*>(swapchainImagesMap[swapchain].second.data());
 }
 
-void GraphicsOpenGLES::destroyImageView(void *&imageView) {
+void GraphicsOpenGLES::destroyImageView(void*& imageView) {
     GLuint framebuffer = (GLuint)(uint64_t)imageView;
     imageViews.erase(framebuffer);
     glDeleteFramebuffers(1, &framebuffer);
@@ -667,20 +621,20 @@ void GraphicsOpenGLES::freeSwapchainImageData(XrSwapchain swapchain) {
     swapchainImagesMap.erase(swapchain);
 }
 
-void GraphicsOpenGLES::destroyPipeline(void *&pipeline) {
+void GraphicsOpenGLES::destroyPipeline(void*& pipeline) {
     GLint program = (GLuint)(uint64_t)pipeline;
     pipelines.erase(program);
     glDeleteProgram(program);
     pipeline = nullptr;
 }
 
-void GraphicsOpenGLES::destroyShader(void *&shader) {
+void GraphicsOpenGLES::destroyShader(void*& shader) {
     GLuint glShader = (GLuint)(uint64_t)shader;
     glDeleteShader(glShader);
     shader = nullptr;
 }
 
-void GraphicsOpenGLES::destroyBuffer(void *&buffer) {
+void GraphicsOpenGLES::destroyBuffer(void* &buffer) {
     GLuint glBuffer = (GLuint)(uint64_t)buffer;
     buffers.erase(glBuffer);
     glDeleteBuffers(1, &glBuffer);

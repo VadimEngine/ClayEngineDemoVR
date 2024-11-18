@@ -251,8 +251,6 @@ inline static void XrMatrix4x4f_CreateProjectionFov(XrMatrix4x4f* result, const 
 
 class GraphicsOpenGLES {
 public:
-    static const char* vertexShaderSource;
-    static const char* fragmentShaderSource;
     struct BufferCreateInfo {
         enum class Type : uint8_t {
             VERTEX,
@@ -695,7 +693,7 @@ public:
 
     int64_t selectColorSwapchainFormat(const std::vector<int64_t> &formats);
 
-    void setPipeline(void *pipeline);
+    void setPipeline(void* pipeline);
 
     const std::vector<int64_t> getSupportedColorSwapchainFormats();
 
@@ -705,23 +703,23 @@ public:
 
     GLenum getGLTextureTarget(const ImageCreateInfo &imageCI);
 
-    void setVertexBuffers(void **vertexBuffers, size_t count);
+    void setVertexBuffers(void** vertexBuffers, size_t count);
 
-    void setIndexBuffer(void *indexBuffer);
+    void setIndexBuffer(void* indexBuffer);
 
     void drawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t vertexOffset = 0, uint32_t firstInstance = 0);
 
     void setDescriptor(const DescriptorInfo &descriptorInfo);
 
-    void setBufferData(void *buffer, size_t offset, size_t size, void *data);
+    void setBufferData(void* buffer, size_t offset, size_t size, void* data);
 
-    void setRenderAttachments(void **colorViews, size_t colorViewCount, void *depthStencilView, uint32_t width, uint32_t height, void *pipeline);
+    void setRenderAttachments(void** colorViews, size_t colorViewCount, void* depthStencilView, uint32_t width, uint32_t height, void* pipeline);
 
     void* getGraphicsBinding();
 
-    void setViewports(Viewport *viewports, size_t count);
+    void setViewports(Viewport* viewports, size_t count);
 
-    void setScissors(Rect2D *scissors, size_t count);
+    void setScissors(Rect2D* scissors, size_t count);
 
     void beginRendering();
 
@@ -729,9 +727,9 @@ public:
 
     void* createPipeline(const PipelineCreateInfo &pipelineCI);
 
-    void clearColor(void *imageView, float r, float g, float b, float a);
+    void clearColor(void* imageView, float r, float g, float b, float a);
 
-    void clearDepth(void *imageView, float d);
+    void clearDepth(void* imageView, float d);
 
     void* createBuffer(const BufferCreateInfo &bufferCI);
 
@@ -739,15 +737,15 @@ public:
 
     XrSwapchainImageBaseHeader* allocateSwapchainImageData(XrSwapchain swapchain, SwapchainType type, uint32_t count);
 
-    void destroyImageView(void *&imageView);
+    void destroyImageView(void*& imageView);
 
     void freeSwapchainImageData(XrSwapchain swapchain);
 
-    void destroyPipeline(void *&pipeline);
+    void destroyPipeline(void*& pipeline);
 
-    void destroyShader(void *&shader);
+    void destroyShader(void*& shader);
 
-    void destroyBuffer(void *&buffer);
+    void destroyBuffer(void*& buffer);
 
 private:
     PFN_xrGetOpenGLESGraphicsRequirementsKHR xrGetOpenGLESGraphicsRequirementsKHR = nullptr;
