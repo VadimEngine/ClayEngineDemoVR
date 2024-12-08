@@ -14,7 +14,7 @@ Camera::Camera() {
 
 glm::mat4 Camera::getProjectionMatrix() const {
      // TODO get the width and height from somewhere instead of magic numbers
-    return glm::perspective(glm::radians(mFOV_), (float)800 / (float)600, 0.1f, 100.0f);
+    return glm::perspective(glm::radians(mFOV_), (float)800 / (float)600, mNear_, mFar_);
 }
 
 glm::mat4 Camera::getViewMatrix() const {
@@ -40,4 +40,16 @@ void Camera::updateCameraVectors() {
 
 void Camera::move(const glm::vec3 dir, const float step) {
     mPosition_ += (glm::normalize(dir) * step);
+}
+
+float Camera::getNear() const {
+    return mNear_;
+}
+
+float Camera::getFar() const {
+    return mFar_;
+}
+
+glm::vec3 Camera::getPosition() const {
+    return mPosition_;
 }

@@ -1,7 +1,7 @@
 // core
-#include "Shader.h"
+#include "Core/Graphics/Shader.h"
 
-Shader::Shader(const char* vertexShaderCode,  const char* fragmentShaderCode) {
+Shader::Shader(const char* vertexShaderCode, const char* fragmentShaderCode) {
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderCode, nullptr);
     glCompileShader(vertexShader);
@@ -16,8 +16,8 @@ Shader::Shader(const char* vertexShaderCode,  const char* fragmentShaderCode) {
     glAttachShader(mProgramId_, fragmentShader);
     glLinkProgram(mProgramId_);
 
-    // glDeleteShader(vertexShader);
-    // glDeleteShader(fragmentShader);
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
 }
 
 Shader::~Shader() {
@@ -88,5 +88,3 @@ void Shader::setMat4(const std::string &name, const glm::mat4 &mat) const {
 GLuint Shader::getProgramId() const {
     return mProgramId_;
 }
-
-

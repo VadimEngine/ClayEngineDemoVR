@@ -14,7 +14,7 @@
         android:required="false" />
 
     <application
-        android:label="Template"
+        android:label="ClayEngineDemoVR"
         android:allowBackup="true"
         android:supportsRtl="true"
         tools:targetApi="31"
@@ -30,7 +30,7 @@
 
             <meta-data
                 android:name="android.app.lib_name"
-                android:value="Template"/>
+                android:value="ClayEngineDemoVR"/>
 
             <!-- Standard Khronos OpenXR launcher intent filter. -->
             <intent-filter>

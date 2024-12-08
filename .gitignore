@@ -16,3 +16,4 @@ local.properties
 .vscode
 .idea
 /app/build
+/local

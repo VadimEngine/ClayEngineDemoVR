@@ -3,13 +3,13 @@ plugins {
 }
 
 android {
-    namespace 'com.example.Template'
+    namespace 'com.example.ClayEngineDemoVR'
     compileSdkVersion 33
     //ndkVersion '23.1.7779620'
 
     defaultConfig {
-        applicationId "com.example.Template"
-        minSdk 24
+        applicationId "com.example.ClayEngineDemoVR"
+        minSdk 30
         targetSdk 33
         versionCode 1
         versionName "1.0"

@@ -7,8 +7,6 @@
 #include <glm/glm.hpp>
 
 class Shader {
-private:
-    GLuint mProgramId_;
 public:
     Shader(const char* vertexShaderCode,  const char* fragmentShaderCode);
     ~Shader();
@@ -32,4 +30,8 @@ public:
     void setMat4(const std::string& name, const glm::mat4& mat) const;
 
     GLuint getProgramId() const;
+
+private:
+    /** Program Id for this Shader*/
+    GLuint mProgramId_;
 };

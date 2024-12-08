@@ -1,36 +1,36 @@
 // core
-#include "VR/VRApp.h"
+#include "Application/Scenes/Sandbox/SandboxScene.h"
+#include "Application/Scenes/Space/SpaceScene.h"
+#include "XR/XRApp.h"
 
-android_app* VRApp::androidApp = nullptr;
-VRApp::AndroidAppState VRApp::androidAppState = {};
-
-static int32_t handleInputEvent(struct android_app* app, AInputEvent* inputEvent) {
-    return ImGui_ImplAndroid_HandleInputEvent(inputEvent);
-}
-
-void android_main(struct android_app* app) {
+void android_main(struct android_app* androidApp) {
     JNIEnv* env;
-    app->activity->vm->AttachCurrentThread(&env, nullptr);
+    androidApp->activity->vm->AttachCurrentThread(&env, nullptr);
 
-    XrInstance m_xrInstance = XR_NULL_HANDLE;  // Dummy XrInstance variable for OPENXR_CHECK macro.
     PFN_xrInitializeLoaderKHR xrInitializeLoaderKHR = nullptr;
-    OPENXR_CHECK(xrGetInstanceProcAddr(XR_NULL_HANDLE, "xrInitializeLoaderKHR", (PFN_xrVoidFunction*)&xrInitializeLoaderKHR), "Failed to get InstanceProcAddr for xrInitializeLoaderKHR.");
+    OPENXR_CHECK(
+        xrGetInstanceProcAddr(
+            XR_NULL_HANDLE,
+            "xrInitializeLoaderKHR",
+            (PFN_xrVoidFunction*)&xrInitializeLoaderKHR
+        ),
+        "Failed to get InstanceProcAddr for xrInitializeLoaderKHR."
+    )
     if (!xrInitializeLoaderKHR) {
         return;
     }
 
     // Fill out an XrLoaderInitInfoAndroidKHR structure and initialize the loader for Android.
     XrLoaderInitInfoAndroidKHR loaderInitializeInfoAndroid{XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR};
-    loaderInitializeInfoAndroid.applicationVM = app->activity->vm;
-    loaderInitializeInfoAndroid.applicationContext = app->activity->clazz;
-    OPENXR_CHECK(xrInitializeLoaderKHR((XrLoaderInitInfoBaseHeaderKHR*)&loaderInitializeInfoAndroid), "Failed to initialize Loader for Android.");
-
-    app->userData = &VRApp::androidAppState;
-    app->onAppCmd = VRApp::AndroidAppHandleCmd;
-    app->onInputEvent = handleInputEvent;
-
-    __android_log_print(ANDROID_LOG_INFO, "VRAPP", "%s", "STARTING APP");
-    VRApp mainApp;
-    VRApp::androidApp = app;
+    loaderInitializeInfoAndroid.applicationVM = androidApp->activity->vm;
+    loaderInitializeInfoAndroid.applicationContext = androidApp->activity->clazz;
+    OPENXR_CHECK(
+        xrInitializeLoaderKHR((XrLoaderInitInfoBaseHeaderKHR*)&loaderInitializeInfoAndroid),
+        "Failed to initialize Loader for Android."
+    )
+    LOG_I("Starting Application");
+    XRApp mainApp(androidApp);
+    mainApp.setScene(new SandboxScene(&mainApp));
+    SpaceScene spaceScene(&mainApp);
     mainApp.run();
 }

@@ -17,18 +17,7 @@ void ImguiComponent::initialize(ANativeWindow* pWindow) {
 
     // Setup Platform/Renderer backends
     ImGui_ImplAndroid_Init(pWindow);
-    ImGui_ImplOpenGL3_Init("#version 300 es");
-
-    // We load the default font with increased size to improve readability on many devices with "high" DPI.
-    // FIXME: Put some effort into DPI awareness.
-    // Important: when calling AddFontFromMemoryTTF(), ownership of font_data is transferred by Dear ImGui by default (deleted is handled by Dear ImGui), unless we set FontDataOwnedByAtlas=false in ImFontConfig
-    ImFontConfig font_cfg;
-    font_cfg.SizePixels = 22.0f;
-    io.Fonts->AddFontDefault(&font_cfg);
-    // Arbitrary scale-up
-    // FIXME: Put some effort into DPI awareness
-    ImGui::GetStyle().ScaleAllSizes(3.0f);
-
+    ImGui_ImplOpenGL3_Init("#version 300 es"); // TODO 320?
     // g_Initialized = true;
 }
 
