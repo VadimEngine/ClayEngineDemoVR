@@ -1,26 +1,26 @@
 // forward declare
-#include "XR/XRApp.h"
+#include <clay/application/xr/AppXR.h>
 // class
 #include "SpaceScene.h"
 
 
-SpaceScene::SpaceScene(XRApp* theApp)
- : Scene(theApp) {
+SpaceScene::SpaceScene(clay::AppXR* theApp)
+ : clay::SceneXR(theApp) {
     mBackgroundColor_ = {0.0f, 0.0f, 0.0f, 1.0f};
 
-    mpSimpleShader_ = mpApp_->getResources().getResource<Shader>("SimpleShader");
-    mpTextShader_ = mpApp_->getResources().getResource<Shader>("TextShader");
-    mpTextureShader_ = mpApp_->getResources().getResource<Shader>("TextureShader");
+    mpSimpleShader_ = mpApp_->getResources().getResource<clay::ShaderProgram>("SimpleShader");
+    mpTextShader_ = mpApp_->getResources().getResource<clay::ShaderProgram>("TextShader");
+    mpTextureShader_ = mpApp_->getResources().getResource<clay::ShaderProgram>("TextureShader");
 
-    mpPlaneModel_ = mpApp_->getResources().getResource<Model>("Plane");
-    mpSphereModel_ = mpApp_->getResources().getResource<Model>("Sphere");
-    mpCubeModel_ = mpApp_->getResources().getResource<Model>("Cube");
+    mpPlaneMesh_ = mpApp_->getResources().getResource<clay::Mesh>("Plane");
+    mpSphereMesh_ = mpApp_->getResources().getResource<clay::Mesh>("Sphere");
+    mpCubeMesh_ = mpApp_->getResources().getResource<clay::Mesh>("Cube");
 
     mOrbitRadius_ = 2;
     mSunPosition_ = {0.0f,0.0f,0.0f};
     mPlanetPosition_ = {0.0f,0.0f,mOrbitRadius_};
 
-    spaceGUI = new SpaceGUI(mpTextureShader_, mpPlaneModel_, this);
+    spaceGUI = new SpaceGUI(mpTextureShader_, mpPlaneMesh_, this);
     spaceGUI->setPosition({1, 0, 4});
     spaceGUI->setRotation({90, 0, 45});
     spaceGUI->setInputHandler(&(mpApp_->getInputHandler()));
@@ -30,8 +30,8 @@ SpaceScene::SpaceScene(XRApp* theApp)
 SpaceScene::~SpaceScene() {}
 
 void SpaceScene::update(float dt) {
-    const auto joyDirLeft = mpApp_->getInputHandler().getJoystickDirection(InputHandler::Hand::LEFT);
-    const auto joyDirRight = mpApp_->getInputHandler().getJoystickDirection(InputHandler::Hand::RIGHT);
+    const auto joyDirLeft = mpApp_->getInputHandler().getJoystickDirection(clay::InputHandlerXR::Hand::LEFT);
+    const auto joyDirRight = mpApp_->getInputHandler().getJoystickDirection(clay::InputHandlerXR::Hand::RIGHT);
 
     mCamera_.updateWithJoystickInput(
         {joyDirLeft.x, joyDirLeft.y},
@@ -48,8 +48,8 @@ void SpaceScene::update(float dt) {
     mPlanetPosition_ = {rotatedVector.x, rotatedVector.y, rotatedVector.z};
 };
 
-void SpaceScene::render(GraphicsContext& gContext) {
-    auto gContextVR = dynamic_cast<GraphicsContextXR&>(gContext);
+void SpaceScene::render(clay::IGraphicsContext& gContext) {
+    auto gContextVR = dynamic_cast<clay::GraphicsContextXR&>(gContext);
     mpSimpleShader_->bind();
 
     glm::mat4 glmView = xr::utils::computeViewMatrix(gContextVR.view.pose, mCamera_.getPosition(), mCamera_.getOrientation());
@@ -64,7 +64,7 @@ void SpaceScene::render(GraphicsContext& gContext) {
     glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), mSunPosition_);
     mpSimpleShader_->setMat4("model", translationMatrix  * sunScaleMat);
     mpSimpleShader_->setVec4("uColor",  {1,1,0,1});
-    mpSphereModel_->render(*mpSimpleShader_);
+    mpSphereMesh_->render(*mpSimpleShader_);
 
     // draw planet
     glm::vec3 planetScale(.25f, .25f, .25f);
@@ -72,12 +72,12 @@ void SpaceScene::render(GraphicsContext& gContext) {
     glm::mat4 planetScaleMax = glm::scale(glm::mat4(1.0f), planetScale);
     mpSimpleShader_->setMat4("model", planetTranslateMax  * planetScaleMax);
     mpSimpleShader_->setVec4("uColor",  {0,1,0,1});
-    mpSphereModel_->render(*mpSimpleShader_);
+    mpSphereMesh_->render(*mpSimpleShader_);
 
     mpSimpleShader_->setVec4("uColor",  {1,1,0,1});
     // LEFT HAND
     {
-        const auto& handPose = mpApp_->getInputHandler().getAimPose(InputHandler::Hand::LEFT);
+        const auto& handPose = mpApp_->getInputHandler().getAimPose(clay::InputHandlerXR::Hand::LEFT);
         glm::quat handOrientation(handPose.orientation.w, handPose.orientation.x, handPose.orientation.y, handPose.orientation.z);
         glm::vec3 handScale(0.01f, 0.01f, 1.0f);
 
@@ -93,11 +93,11 @@ void SpaceScene::render(GraphicsContext& gContext) {
         glm::mat4 glmView2 = xr::utils::computeViewMatrix(gContextVR.view.pose);
         mpSimpleShader_->setMat4("view", glmView2);
         mpSimpleShader_->setMat4("model", thisTranslationMatrix * rotationMatrix4 * thisScaleMatrix);
-        mpCubeModel_->render(*mpSimpleShader_);
+        mpCubeMesh_->render(*mpSimpleShader_);
     }
     // RIGHT HAND
     {
-        const auto& handPose = mpApp_->getInputHandler().getAimPose(InputHandler::Hand::RIGHT);
+        const auto& handPose = mpApp_->getInputHandler().getAimPose(clay::InputHandlerXR::Hand::RIGHT);
         glm::quat handOrientation(handPose.orientation.w, handPose.orientation.x, handPose.orientation.y, handPose.orientation.z);
         glm::vec3 handScale(0.01f, 0.01f, 1.0f);
 
@@ -113,7 +113,7 @@ void SpaceScene::render(GraphicsContext& gContext) {
         glm::mat4 glmView2 = xr::utils::computeViewMatrix(gContextVR.view.pose);
         mpSimpleShader_->setMat4("view", glmView2);
         mpSimpleShader_->setMat4("model", thisTranslationMatrix * rotationMatrix4 * thisScaleMatrix);
-        mpCubeModel_->render(*mpSimpleShader_);
+        mpCubeMesh_->render(*mpSimpleShader_);
         // point with right hand
         spaceGUI->pointAt(
             handPosition + mCamera_.getPosition(),

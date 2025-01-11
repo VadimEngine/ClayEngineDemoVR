@@ -1,21 +1,3 @@
-[submodule "app/src/ThirdParty/OpenXR-SDK-Source"]
-	path = app/src/ThirdParty/OpenXR-SDK-Source
-	url = https://github.com/KhronosGroup/OpenXR-SDK-Source
-[submodule "app/src/ThirdParty/glm"]
-	path = app/src/ThirdParty/glm
-	url = https://github.com/g-truc/glm
-[submodule "app/src/ThirdParty/imgui"]
-	path = app/src/ThirdParty/imgui
-	url = https://github.com/ocornut/imgui
-[submodule "app/src/ThirdParty/openal-soft"]
-	path = app/src/ThirdParty/openal-soft
-	url = https://github.com/kcat/openal-soft
-[submodule "app/src/ThirdParty/libsndfile"]
-	path = app/src/ThirdParty/libsndfile
-	url = https://github.com/libsndfile/libsndfile.git
-[submodule "app/src/ThirdParty/assimp"]
-	path = app/src/ThirdParty/assimp
-	url = https://github.com/assimp/assimp.git
-[submodule "app/src/ThirdParty/freetype"]
-	path = app/src/ThirdParty/freetype
-	url = https://gitlab.freedesktop.org/freetype/freetype.git
+[submodule "app/src/ThirdParty/clay"]
+	path = app/src/ThirdParty/clay
+	url = https://github.com/VadimEngine/ClayEngine

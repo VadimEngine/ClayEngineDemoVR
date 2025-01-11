@@ -1,5 +1,7 @@
-// forward declare
-#include "XR/XRApp.h"
+// third party
+#include <openxr/openxr.h>
+// clay
+#include <clay/application/xr/AppXR.h>
 // class
 #include "SandboxOverlayGUI.h"
 
@@ -8,7 +10,7 @@ SandboxOverlayGUI::SandboxOverlayGUI() {}
 
 SandboxOverlayGUI::~SandboxOverlayGUI() {}
 
-void SandboxOverlayGUI::setApp(XRApp* theApp) {
+void SandboxOverlayGUI::setApp(clay::AppXR* theApp) {
     mApp_ = theApp;
 }
 

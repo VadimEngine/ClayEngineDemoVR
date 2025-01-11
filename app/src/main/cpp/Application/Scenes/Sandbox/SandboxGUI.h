@@ -1,22 +1,19 @@
 #pragma once
 // standard lib
 // third party
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
+// clay
+#include <clay/application/xr/InputHandlerXR.h>
+#include <clay/graphics/common/Mesh.h>
+#include <clay/gui/xr/ImGuiComponentXR.h>
 // project
-#include "Core/Graphics/Shader.h"
-#include "Core/GUI/ImguiComponent.h"
-#include "Core/Graphics/Mesh.h"
-#include "Core/InputHandler.h"
-#include "Core/Graphics/Model.h"
-#include "XR/XRUtils.h"
+#include "Application/Scenes/Common/XRUtils.h"
 
 class SandboxScene;
 
-class SandboxGUI : public ImguiComponent {
+class SandboxGUI : public clay::ImGuiComponentXR {
 public:
-
-    SandboxGUI(Shader* textureShader, Model* pPlaneModel, SandboxScene* theScene);
+    SandboxGUI(clay::ShaderProgram* textureShader, clay::Mesh* pPlaneMesh, SandboxScene* theScene);
 
     ~SandboxGUI();
 
@@ -30,16 +27,16 @@ public:
 
     void pointAt(glm::vec3 origin, glm::vec3 direction);
 
-    void setInputHandler(InputHandler* pInputHandler);
+    void setInputHandler(clay::InputHandlerXR* pInputHandler);
 
 private:
     void buildImGui(const glm::mat4& view, const glm::mat4& proj);
 
     void renderPlane(const glm::mat4& view, const glm::mat4& proj);
 
-    Shader* mShader_ = nullptr;
-    GLuint mFBO_;
-    GLuint mFBTextureId_;
+    clay::ShaderProgram* mShader_ = nullptr;
+    unsigned int mFBO_;
+    unsigned int mFBTextureId_;
 
     glm::ivec2 mTextureDim_;
 
@@ -50,9 +47,9 @@ private:
 
     ImVec2 calMousePos = {0,0};
 
-    Model* mPlaneModel_ = nullptr;
+    clay::Mesh* mPlaneMesh_ = nullptr;
 
-    InputHandler* mpInputHandler_ = nullptr;
+    clay::InputHandlerXR* mpInputHandler_ = nullptr;
 
     SandboxScene* mpScene_;
 };
