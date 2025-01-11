@@ -4,8 +4,8 @@
 // project
 #include "SpaceGUI.h"
 
-SpaceGUI::SpaceGUI(Shader* pTextureShader, Model* pPlaneModel, SpaceScene* theScene)
-    : mShader_(pTextureShader), mPlaneModel_(pPlaneModel), mpScene_(theScene) {
+SpaceGUI::SpaceGUI(clay::ShaderProgram* pTextureShader, clay::Mesh* pPlaneMesh, SpaceScene* theScene)
+    : mShader_(pTextureShader), mPlaneMesh_(pPlaneMesh), mpScene_(theScene) {
 
     mTextureDim_ = {4128, 2208}; // imgui uses this size for its fbo
 
@@ -50,7 +50,7 @@ SpaceGUI::SpaceGUI(Shader* pTextureShader, Model* pPlaneModel, SpaceScene* theSc
 
 SpaceGUI::~SpaceGUI() = default;
 
-void SpaceGUI::setInputHandler(InputHandler* pInputHandler) {
+void SpaceGUI::setInputHandler(clay::InputHandlerXR* pInputHandler) {
     mpInputHandler_ = pInputHandler;
 }
 
@@ -88,7 +88,7 @@ void SpaceGUI::renderPlane(const glm::mat4& view, const glm::mat4& proj) {
 
     mShader_->setMat4("view", view);
     mShader_->setMat4("projection",  proj);
-    mPlaneModel_->render(*mShader_);
+    mPlaneMesh_->render(*mShader_);
 }
 
 void SpaceGUI::setPosition(const glm::vec3& position) {
@@ -123,7 +123,7 @@ void SpaceGUI::buildImGui(const glm::mat4& view, const glm::mat4& proj) {
 
     io.MousePos = calMousePos;
 
-    const float rightTriggerState = mpInputHandler_->getTriggerState(InputHandler::Hand::RIGHT);
+    const float rightTriggerState = mpInputHandler_->getTriggerState(clay::InputHandlerXR::Hand::RIGHT);
 
     if (rightTriggerState > .1f) {
         io.AddMouseButtonEvent(0, true);  // Simulate mouse down
@@ -145,17 +145,17 @@ void SpaceGUI::buildImGui(const glm::mat4& view, const glm::mat4& proj) {
     }
     ImGui::Text("Counter: %i", counter);
     ImGui::Separator();
-    ImGui::Text("Grab: %f, %f", mpInputHandler_->getGrabState(InputHandler::Hand::LEFT), mpInputHandler_->getGrabState(InputHandler::Hand::RIGHT));
-    ImGui::Text("Trigger: %f, %f", mpInputHandler_->getTriggerState(InputHandler::Hand::LEFT), mpInputHandler_->getTriggerState(InputHandler::Hand::RIGHT));
+    ImGui::Text("Grab: %f, %f", mpInputHandler_->getGrabState(clay::InputHandlerXR::Hand::LEFT), mpInputHandler_->getGrabState(clay::InputHandlerXR::Hand::RIGHT));
+    ImGui::Text("Trigger: %f, %f", mpInputHandler_->getTriggerState(clay::InputHandlerXR::Hand::LEFT), mpInputHandler_->getTriggerState(clay::InputHandlerXR::Hand::RIGHT));
 
 
     ImGui::Text("Buttons: %i, %i, %i, %i",
-                mpInputHandler_->getButtonDown(InputHandler::Button::Y),
-                mpInputHandler_->getButtonDown(InputHandler::Button::X),
-                mpInputHandler_->getButtonDown(InputHandler::Button::B),
-                mpInputHandler_->getButtonDown(InputHandler::Button::A)
+                mpInputHandler_->getButtonDown(clay::InputHandlerXR::Button::Y),
+                mpInputHandler_->getButtonDown(clay::InputHandlerXR::Button::X),
+                mpInputHandler_->getButtonDown(clay::InputHandlerXR::Button::B),
+                mpInputHandler_->getButtonDown(clay::InputHandlerXR::Button::A)
     );
-    const auto& leftGripPose = mpInputHandler_->getGripPose(InputHandler::Hand::LEFT);
+    const auto& leftGripPose = mpInputHandler_->getGripPose(clay::InputHandlerXR::Hand::LEFT);
     ImGui::Text("Left Grip Pose: (%f, %f, %f, %f) (%f, %f, %f)",
                 leftGripPose.orientation.x,
                 leftGripPose.orientation.y,
@@ -165,7 +165,7 @@ void SpaceGUI::buildImGui(const glm::mat4& view, const glm::mat4& proj) {
                 leftGripPose.position.y,
                 leftGripPose.position.z
     );
-    const auto& rightGripPose = mpInputHandler_->getGripPose(InputHandler::Hand::LEFT);
+    const auto& rightGripPose = mpInputHandler_->getGripPose(clay::InputHandlerXR::Hand::LEFT);
     ImGui::Text("Right Grip Pose: (%f, %f, %f, %f) (%f, %f, %f)",
                 rightGripPose.orientation.x,
                 rightGripPose.orientation.y,
@@ -175,7 +175,7 @@ void SpaceGUI::buildImGui(const glm::mat4& view, const glm::mat4& proj) {
                 rightGripPose.position.y,
                 rightGripPose.position.z
     );
-    const auto& leftAimPose = mpInputHandler_->getAimPose(InputHandler::Hand::LEFT);
+    const auto& leftAimPose = mpInputHandler_->getAimPose(clay::InputHandlerXR::Hand::LEFT);
     ImGui::Text("Left Aim Pose: (%f, %f, %f, %f) (%f, %f, %f)",
                 leftAimPose.orientation.x,
                 leftAimPose.orientation.y,
@@ -185,7 +185,7 @@ void SpaceGUI::buildImGui(const glm::mat4& view, const glm::mat4& proj) {
                 leftAimPose.position.y,
                 leftAimPose.position.z
     );
-    const auto& rightAimPose = mpInputHandler_->getAimPose(InputHandler::Hand::LEFT);
+    const auto& rightAimPose = mpInputHandler_->getAimPose(clay::InputHandlerXR::Hand::LEFT);
     ImGui::Text("Right Aim Pose: (%f, %f, %f, %f) (%f, %f, %f)",
                 rightAimPose.orientation.x,
                 rightAimPose.orientation.y,
@@ -195,7 +195,7 @@ void SpaceGUI::buildImGui(const glm::mat4& view, const glm::mat4& proj) {
                 rightAimPose.position.y,
                 rightAimPose.position.z
     );
-    const auto& leftJoystickDir = mpInputHandler_->getJoystickDirection(InputHandler::Hand::LEFT);
+    const auto& leftJoystickDir = mpInputHandler_->getJoystickDirection(clay::InputHandlerXR::Hand::LEFT);
     ImGui::Text("Joystick dir: (%f, %f) (%f, %f)",
                 leftJoystickDir.x,
                 leftJoystickDir.y,

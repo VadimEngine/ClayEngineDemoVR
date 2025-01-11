@@ -1,21 +1,21 @@
 #pragma once
 // third party
-#include <openxr/openxr.h>
-#include <openxr/openxr_platform.h>
 #include <glm/glm.hpp>
 // project
-#include "Core/GUI/ImguiComponent.h"
-#include "Core/Graphics/Shader.h"
+#include <clay/gui/xr/ImGuiComponentXR.h>
 
-class XRApp;
+// forward delcare AppXR
+namespace clay {
+class AppXR;
+}
 
-class SandboxOverlayGUI : public ImguiComponent {
+class SandboxOverlayGUI : public clay::ImGuiComponentXR {
 public:
     SandboxOverlayGUI();
 
     ~SandboxOverlayGUI();
 
-    void setApp(XRApp* theApp);
+    void setApp(clay::AppXR* theApp);
 
     void setPosition(const glm::vec2 position);
 
@@ -28,7 +28,7 @@ private:
 
     glm::vec2 mPosition_{0,0};
 
-    XRApp* mApp_ = nullptr;
+    clay::AppXR* mApp_ = nullptr;
 
     ImVec2 mousePos = ImVec2( 700.0f +50.f,  735.0f + 15.f);
 

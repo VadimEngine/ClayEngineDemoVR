@@ -1,20 +1,28 @@
+//standard lib
+// third party
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+// project
+#include "Application/Scenes/Common/XRUtils.h"
+// class
 #include "SandboxScene.h"
 
-SandboxScene::SandboxScene(XRApp* pApp) : Scene(pApp){
-    mpSimpleShader_ = mpApp_->getResources().getResource<Shader>("SimpleShader");
-    mpTextShader_ = mpApp_->getResources().getResource<Shader>("TextShader");
-    mpTextureShader_ = mpApp_->getResources().getResource<Shader>("TextureShader");
+SandboxScene::SandboxScene(clay::AppXR* pApp) : clay::SceneXR(pApp){
+    mpSimpleShader_ = mpApp_->getResources().getResource<clay::ShaderProgram>("SimpleShader");
+    mpTextShader_ = mpApp_->getResources().getResource<clay::ShaderProgram>("TextShader");
+    mpTextureShader_ = mpApp_->getResources().getResource<clay::ShaderProgram>("TextureShader");
 
-    mpPlaneModel_ = mpApp_->getResources().getResource<Model>("Plane");
-    mpSphereModel_ = mpApp_->getResources().getResource<Model>("Sphere");
-    mpCubeModel_ = mpApp_->getResources().getResource<Model>("Cube");
+    mpPlaneMesh_ = mpApp_->getResources().getResource<clay::Mesh>("Plane");
+    mpSphereMesh_ = mpApp_->getResources().getResource<clay::Mesh>("Sphere");
+    mpCubeMesh_ = mpApp_->getResources().getResource<clay::Mesh>("Cube");
 
-    mpConsolasFont_ = mpApp_->getResources().getResource<Font>("Consolas");
-    mpBeepDeepAudio_ = mpApp_->getResources().getResource<Audio>("DeepBeep");
+    mpConsolasFont_ = mpApp_->getResources().getResource<clay::Font>("Consolas");
+    mpBeepDeepAudio_ = mpApp_->getResources().getResource<clay::Audio>("DeepBeep");
 
-    mpVTexture_ = mpApp_->getResources().getResource<Texture>("VTexture");
+    mpVTexture_ = mpApp_->getResources().getResource<clay::Texture>("VTexture");
 
-    mSandboxGUI_ = new SandboxGUI(mpTextureShader_, mpPlaneModel_, this);
+    mSandboxGUI_ = new SandboxGUI(mpTextureShader_, mpPlaneMesh_, this);
     mSandboxGUI_->setPosition({1, 0, 0});
     mSandboxGUI_->setRotation({90, 0, 45});
     mSandboxGUI_->setInputHandler(&(mpApp_->getInputHandler()));
@@ -25,8 +33,8 @@ SandboxScene::SandboxScene(XRApp* pApp) : Scene(pApp){
 }
 
 void SandboxScene::update(float dt) {
-    const auto joyDirLeft = mpApp_->getInputHandler().getJoystickDirection(InputHandler::Hand::LEFT);
-    const auto joyDirRight = mpApp_->getInputHandler().getJoystickDirection(InputHandler::Hand::RIGHT);
+    const auto joyDirLeft = mpApp_->getInputHandler().getJoystickDirection(clay::InputHandlerXR::Hand::LEFT);
+    const auto joyDirRight = mpApp_->getInputHandler().getJoystickDirection(clay::InputHandlerXR::Hand::RIGHT);
 
     mCamera_.updateWithJoystickInput(
         {joyDirLeft.x, joyDirLeft.y},
@@ -37,8 +45,8 @@ void SandboxScene::update(float dt) {
     );
 }
 
-void SandboxScene::render(GraphicsContext& gContext) {
-    auto gContextVR = dynamic_cast<GraphicsContextXR&>(gContext);
+void SandboxScene::render(clay::IGraphicsContext& gContext) {
+    auto gContextVR = dynamic_cast<clay::GraphicsContextXR&>(gContext);
     glm::mat4 glmProj = xr::utils::computeProjectionMatrix(gContextVR.view.fov, mCamera_.nearZ, mCamera_.farZ);
     glm::mat4 glmView = xr::utils::computeViewMatrix(gContextVR.view.pose, mCamera_.getPosition(), mCamera_.getOrientation());
 
@@ -47,7 +55,7 @@ void SandboxScene::render(GraphicsContext& gContext) {
 
     // Left hand
     {
-        const auto& handPose = mpApp_->getInputHandler().getAimPose(InputHandler::Hand::LEFT);
+        const auto& handPose = mpApp_->getInputHandler().getAimPose(clay::InputHandlerXR::Hand::LEFT);
         glm::quat handOrientation(handPose.orientation.w, handPose.orientation.x, handPose.orientation.y, handPose.orientation.z);
         glm::vec3 handScale(0.01f, 0.01f, 1.0f);
 
@@ -64,11 +72,12 @@ void SandboxScene::render(GraphicsContext& gContext) {
         mpSimpleShader_->setMat4("view", glmView2);
         mpSimpleShader_->setMat4("model", thisTranslationMatrix * rotationMatrix4 * thisScaleMatrix);
         mpSimpleShader_->setVec4("uColor", {1.0f,1.0f,0.0f, 1.0f});
-        mpCubeModel_->render(*mpSimpleShader_);
+        // mpCubeModel_->render(*mpSimpleShader_);
+        mpCubeMesh_->render(*mpSimpleShader_);
     }
     // Right hand
     {
-        const auto& handPose = mpApp_->getInputHandler().getAimPose(InputHandler::Hand::RIGHT);
+        const auto& handPose = mpApp_->getInputHandler().getAimPose(clay::InputHandlerXR::Hand::RIGHT);
         glm::quat handOrientation(handPose.orientation.w, handPose.orientation.x, handPose.orientation.y, handPose.orientation.z);
         glm::vec3 handScale(0.01f, 0.01f, 1.0f);
 
@@ -85,7 +94,8 @@ void SandboxScene::render(GraphicsContext& gContext) {
         mpSimpleShader_->setMat4("view", glmView2);
         mpSimpleShader_->setMat4("model", thisTranslationMatrix * rotationMatrix4 * thisScaleMatrix);
         mpSimpleShader_->setVec4("uColor", {1.0f,1.0f,0.0f, 1.0f});
-        mpCubeModel_->render(*mpSimpleShader_);
+        // mpCubeModel_->render(*mpSimpleShader_);
+        mpCubeMesh_->render(*mpSimpleShader_);
         // point with right hand
         mSandboxGUI_->pointAt(
             handPosition + mCamera_.getPosition(),
@@ -119,7 +129,8 @@ void SandboxScene::render(GraphicsContext& gContext) {
         glBindTexture(GL_TEXTURE_2D, mpVTexture_->getId());
         mpTextureShader_->setInt("theTexture", 0);
 
-        mpSphereModel_->render(*mpTextureShader_);
+        // mpSphereModel_->render(*mpTextureShader_);
+        mpSphereMesh_->render(*mpTextureShader_);
     }
 
     // Font
@@ -162,7 +173,7 @@ void SandboxScene::renderFont(const std::string& text,
                                const glm::mat4& view,
                                const glm::mat4& proj,
                                const glm::mat4& modelMat,
-                               const Font& font,
+                               const clay::Font& font,
                                const glm::vec3 &scale,
                                const glm::vec3 &color) {
     // activate corresponding render state
@@ -176,7 +187,7 @@ void SandboxScene::renderFont(const std::string& text,
     // Calculate the total width of the text
     float totalWidth = 0.0f;
     for (const char& c : text) {
-        const Font::Character* ch = font.getCharInfo(c);
+        const clay::Font::Character* ch = font.getCharInfo(c);
         if (ch != nullptr) {
             totalWidth += (ch->advance >> 6) * scale.x;
         }
@@ -186,7 +197,7 @@ void SandboxScene::renderFont(const std::string& text,
 
     // iterate through all characters
     for (const char& c : text) {
-        const Font::Character* ch = font.getCharInfo(c);
+        const clay::Font::Character* ch = font.getCharInfo(c);
 
         if (ch != nullptr) {
             float xpos = startX + ch->bearing.x * scale.x;

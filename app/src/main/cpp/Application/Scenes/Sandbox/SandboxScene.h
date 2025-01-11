@@ -2,40 +2,33 @@
 // standard lib
 // third party
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtc/type_ptr.hpp>
+// clay
+#include <clay/audio/Audio.h>
+#include <clay/application/xr/AppXR.h>
+#include <clay/graphics/common/Mesh.h>
+#include <clay/graphics/common/Texture.h>
+#include <clay/application/xr/SceneXR.h>
+#include <clay/graphics/opengles/GraphicsContextXR.h>
 // project
-#include "XR/XRApp.h" // include this on top
 #include "Application/Scenes/Sandbox/SandboxOverlayGUI.h"
 #include "Application/Scenes/Sandbox/SandboxGUI.h"
-#include "Core/Application/Scene.h"
-#include "Core/Audio/Audio.h"
-#include "Core/Graphics/Shader.h"
-#include "Core/Graphics/Mesh.h"
-#include "Core/Graphics/Font.h"
-#include "Core/Graphics/Model.h"
-#include "XR/Camera.h"
-#include "XR/GraphicsContextXR.h"
-#include "XR/XRUtils.h"
-#include "Core/Graphics/Texture.h"
 
 
-class SandboxScene : public Scene {
+class SandboxScene : public clay::SceneXR {
 public:
-    SandboxScene(XRApp* pApp);
+    SandboxScene(clay::AppXR* pApp);
 
     ~SandboxScene() = default;
 
     void update(float dt) override;
 
-    void render(GraphicsContext& gContext) override;
+    void render(clay::IGraphicsContext& gContext) override;
 
     void renderFont(const std::string& text,
                     const glm::mat4& view,
                     const glm::mat4& proj,
                     const glm::mat4& modelMat,
-                    const Font& font,
+                    const clay::Font& font,
                     const glm::vec3& scale,
                     const glm::vec3& color);
 
@@ -45,18 +38,18 @@ public:
     SandboxOverlayGUI testGUI;
     SandboxGUI* mSandboxGUI_;
 
-    Shader* mpSimpleShader_ = nullptr;
-    Shader* mpTextShader_ = nullptr;
-    Shader* mpTextureShader_ = nullptr;
+    clay::ShaderProgram* mpSimpleShader_ = nullptr;
+    clay::ShaderProgram* mpTextShader_ = nullptr;
+    clay::ShaderProgram* mpTextureShader_ = nullptr;
 
-    Model* mpPlaneModel_ = nullptr;
-    Model* mpSphereModel_ = nullptr;
-    Model* mpCubeModel_ = nullptr;
+    clay::Mesh* mpPlaneMesh_ = nullptr;
+    clay::Mesh* mpSphereMesh_ = nullptr;
+    clay::Mesh* mpCubeMesh_ = nullptr;
 
-    Font* mpConsolasFont_ = nullptr;
-    Audio* mpBeepDeepAudio_ = nullptr;
+    clay::Font* mpConsolasFont_ = nullptr;
+    clay::Audio* mpBeepDeepAudio_ = nullptr;
 
-    Texture* mpVTexture_ = nullptr;
+    clay::Texture* mpVTexture_ = nullptr;
 };
 
 

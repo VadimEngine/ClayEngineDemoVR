@@ -36,7 +36,7 @@ build CLI:
 
 The build `app-debug.apk` will be `ClayEngineDemoVR\app\build\intermediates\apk\debug\app-debug.apk` can be deployed to an Oculus device
 
-Alternatively, this can be build with Android studio.
+Alternatively, this can be built with Android studio.
 
 ### Upcoming Plans
 - More scenes are planned to be added and ClayEngine is planned to fully be included after it is updated to support developing with OpenXR.
