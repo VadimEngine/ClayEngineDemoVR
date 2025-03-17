@@ -14,6 +14,10 @@ Sandbox scene renders rods at the user's controller's aim direction. A loaded 3d
 
 Similar to Sandbox scene but instead, a sun with an orbiting planet is rendered
 
+### Farm Scene
+
+Similar to Sandbox scene but instead, A nature scene is rendered. 
+
 ## Build
 
 build CLI:
