@@ -20,7 +20,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
 set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -u ANativeActivity_onCreate")
 
-set(CLAY_PLATFORM_VR ON CACHE BOOL "Set Platform to VR" FORCE)
+set(CLAY_PLATFORM_XR ON CACHE BOOL "Set Platform to VR" FORCE)
 set(CLAY_ENABLE_OPENGL_ES ON CACHE BOOL "Set Platform to Desktop" FORCE)
 # Add ClayEngine
 add_subdirectory(${CMAKE_SOURCE_DIR}/ThirdParty/clay)

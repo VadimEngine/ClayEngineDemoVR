@@ -4,7 +4,7 @@
 // project
 #include <clay/gui/xr/ImGuiComponentXR.h>
 
-// forward delcare AppXR
+// forward declare AppXR
 namespace clay {
 class AppXR;
 }
@@ -19,7 +19,6 @@ public:
 
     void setPosition(const glm::vec2 position);
 
-
     void render(const glm::mat4& view, const glm::mat4& proj, uint32_t screenWidth, uint32_t screenHeight);
     void setMousePos(const ImVec2& mousePos);
 
@@ -31,5 +30,4 @@ private:
     clay::AppXR* mApp_ = nullptr;
 
     ImVec2 mousePos = ImVec2( 700.0f +50.f,  735.0f + 15.f);
-
 };

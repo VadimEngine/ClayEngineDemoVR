@@ -4,19 +4,17 @@
 #include <glm/glm.hpp>
 // clay
 #include <clay/audio/Audio.h>
-#include <clay/application/xr/AppXR.h>
-#include <clay/graphics/common/Mesh.h>
-#include <clay/graphics/common/Texture.h>
-#include <clay/application/xr/SceneXR.h>
-#include <clay/graphics/opengles/GraphicsContextXR.h>
+#include <clay/entity/Entity.h>
+#include <clay/graphics/xr/GraphicsContextXR.h>
+#include <clay/application/common/BaseScene.h>
+#include <clay/application/xr/CameraControllerXR.h>
 // project
 #include "Application/Scenes/Sandbox/SandboxOverlayGUI.h"
-#include "Application/Scenes/Sandbox/SandboxGUI.h"
+#include "Application/Scenes/Sandbox/SandboxSceneGUI.h"
 
-
-class SandboxScene : public clay::SceneXR {
+class SandboxScene : public clay::BaseScene {
 public:
-    SandboxScene(clay::AppXR* pApp);
+    SandboxScene(clay::IApp& parentApp);
 
     ~SandboxScene() = default;
 
@@ -24,32 +22,31 @@ public:
 
     void render(clay::IGraphicsContext& gContext) override;
 
-    void renderFont(const std::string& text,
-                    const glm::mat4& view,
-                    const glm::mat4& proj,
-                    const glm::mat4& modelMat,
-                    const clay::Font& font,
-                    const glm::vec3& scale,
-                    const glm::vec3& color);
+    void renderGUI() override;
 
     void playSound();
 
+    void assembleResources() override;
+
 public:
     SandboxOverlayGUI testGUI;
-    SandboxGUI* mSandboxGUI_;
+    std::unique_ptr<SandboxSceneGUI> mSandboxGUI_;
 
-    clay::ShaderProgram* mpSimpleShader_ = nullptr;
-    clay::ShaderProgram* mpTextShader_ = nullptr;
-    clay::ShaderProgram* mpTextureShader_ = nullptr;
+    clay::Entity mLeftHandEntity_; // TODO make hand(s) class to encapsulate the hand logic
+    clay::Entity mRightHandEntity_;
+    clay::Entity mTexturedSphere_;
+    clay::Entity mTextEntity_;
+    clay::Entity mCenterSphere_;
 
-    clay::Mesh* mpPlaneMesh_ = nullptr;
-    clay::Mesh* mpSphereMesh_ = nullptr;
-    clay::Mesh* mpCubeMesh_ = nullptr;
+    // Shader used to draw stencil highlight
+    clay::ShaderProgram* mpSolidShader_ = nullptr;
 
-    clay::Font* mpConsolasFont_ = nullptr;
+    clay::Font* mpFont_ = nullptr;
     clay::Audio* mpBeepDeepAudio_ = nullptr;
 
-    clay::Texture* mpVTexture_ = nullptr;
+    bool mHighLight = false;
+
+    clay::CameraControllerXR mCameraController_;
 };
 
 

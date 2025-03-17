@@ -4,234 +4,245 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 // project
-#include "Application/Scenes/Common/XRUtils.h"
+#include "clay/utils/xr/UtilsXR.h"
+#include "clay/application/xr/AppXR.h"
 // class
 #include "SandboxScene.h"
 
-SandboxScene::SandboxScene(clay::AppXR* pApp) : clay::SceneXR(pApp){
-    mpSimpleShader_ = mpApp_->getResources().getResource<clay::ShaderProgram>("SimpleShader");
-    mpTextShader_ = mpApp_->getResources().getResource<clay::ShaderProgram>("TextShader");
-    mpTextureShader_ = mpApp_->getResources().getResource<clay::ShaderProgram>("TextureShader");
+SandboxScene::SandboxScene(clay::IApp& parentApp)
+    : clay::BaseScene(parentApp),
+      mLeftHandEntity_(*this),
+      mRightHandEntity_(*this),
+      mTexturedSphere_(*this),
+      mTextEntity_(*this),
+      mCenterSphere_(*this),
+      mCameraController_(mpFocusCamera_) {
+    assembleResources();
 
-    mpPlaneMesh_ = mpApp_->getResources().getResource<clay::Mesh>("Plane");
-    mpSphereMesh_ = mpApp_->getResources().getResource<clay::Mesh>("Sphere");
-    mpCubeMesh_ = mpApp_->getResources().getResource<clay::Mesh>("Cube");
+    auto* pSimpleShader = mApp_.getResources().getResource<clay::ShaderProgram>("SimpleShader");
+    auto* pFlatShader = mApp_.getResources().getResource<clay::ShaderProgram>("FlatShader");
+    auto* pTextureShader =mApp_.getResources().getResource<clay::ShaderProgram>("TextureShader");
+    auto* pTextureFlippedShader = mApp_.getResources().getResource<clay::ShaderProgram>("TextureFlipShader");
+    mpSolidShader_ = mApp_.getResources().getResource<clay::ShaderProgram>("SolidShader");
 
-    mpConsolasFont_ = mpApp_->getResources().getResource<clay::Font>("Consolas");
-    mpBeepDeepAudio_ = mpApp_->getResources().getResource<clay::Audio>("DeepBeep");
+    mpFont_ = mApp_.getResources().getResource<clay::Font>("Runescape");
+    mpBeepDeepAudio_ = mApp_.getResources().getResource<clay::Audio>("DeepBeep");
 
-    mpVTexture_ = mpApp_->getResources().getResource<clay::Texture>("VTexture");
-
-    mSandboxGUI_ = new SandboxGUI(mpTextureShader_, mpPlaneMesh_, this);
-    mSandboxGUI_->setPosition({1, 0, 0});
+    mSandboxGUI_ = std::make_unique<SandboxSceneGUI>(
+        pTextureShader,
+        mApp_.getResources().getResource<clay::Mesh>("Plane"),
+        this
+    );
+    mSandboxGUI_->setPosition({2, 0, 0});
     mSandboxGUI_->setRotation({90, 0, 45});
-    mSandboxGUI_->setInputHandler(&(mpApp_->getInputHandler()));
+    mSandboxGUI_->setInputHandler(&(( (clay::AppXR&)mApp_).getInputHandler()));
 
-    testGUI.setApp(pApp);
+    testGUI.setApp(&(clay::AppXR&)mApp_);
     testGUI.setPosition({-.5,-.5});
     mBackgroundColor_ = {0.1f, 0.1f, 0.1f, 1.0f};
+
+    {
+        auto* handRenderable = mLeftHandEntity_.addRenderable<clay::ModelRenderable>();
+        handRenderable->setShader(pFlatShader);
+        handRenderable->setModel(mResources_.getResource<clay::Model>("GloveLeft"));
+        handRenderable->setScale({0.2f, 0.2f, 0.2f});
+        handRenderable->setColor(0xE0AC69FF);
+    }
+    {
+        auto* handRenderable = mRightHandEntity_.addRenderable<clay::ModelRenderable>();
+        handRenderable->setShader(pFlatShader);
+        handRenderable->setModel(mResources_.getResource<clay::Model>("GloveRight"));
+        handRenderable->setScale({0.2f, 0.2f, 0.2f});
+        handRenderable->setColor(0xE0AC69FF);
+    }
+    {
+        auto* renderable = mTexturedSphere_.addRenderable<clay::ModelRenderable>();
+        renderable->setModel(mResources_.getResource<clay::Model>("Sphere"));
+        renderable->setShader(pTextureFlippedShader);
+        renderable->setTexture(0, mApp_.getResources().getResource<clay::Texture>("VTexture")->getId(), "theTexture");
+        mTexturedSphere_.setPosition({-1,0,-2});
+    }
+    {
+        auto* renderable = mCenterSphere_.addRenderable<clay::ModelRenderable>();
+        renderable->setModel(mResources_.getResource<clay::Model>("Sphere"));
+        renderable->setShader(pSimpleShader);
+        renderable->setColor({1,1,1,1});
+        mCenterSphere_.setPosition({0,0,0});
+        mCenterSphere_.setScale({.1,.1,.1});
+    }
+    {
+        auto* textRenderable = mTextEntity_.addRenderable<clay::TextRenderable>();
+        textRenderable->setFont(mpFont_);
+        textRenderable->setColor({1,1,0,1});
+        textRenderable->setText("HELLO WORLD");
+        mTextEntity_.setPosition({1,0,-2});
+        mTextEntity_.setScale({.01f,.01f,.01f});
+    }
+
+    mApp_.getGraphicsAPI()->enable(clay::IGraphicsAPI::Capability::STENCIL_TEST);
+    mApp_.getGraphicsAPI()->stencilFunc(clay::IGraphicsAPI::TestFunction::NOTEQUAL, 0xFF);
+    mApp_.getGraphicsAPI()->stencilOp(
+        clay::IGraphicsAPI::StencilAction::KEEP,
+        clay::IGraphicsAPI::StencilAction::KEEP,
+        clay::IGraphicsAPI::StencilAction::REPLACE
+    );
 }
 
 void SandboxScene::update(float dt) {
-    const auto joyDirLeft = mpApp_->getInputHandler().getJoystickDirection(clay::InputHandlerXR::Hand::LEFT);
-    const auto joyDirRight = mpApp_->getInputHandler().getJoystickDirection(clay::InputHandlerXR::Hand::RIGHT);
+    const auto joyDirLeft = ((clay::AppXR&)mApp_).getInputHandler().getJoystickDirection(clay::InputHandlerXR::Hand::LEFT);
+    const auto joyDirRight = ((clay::AppXR&)mApp_).getInputHandler().getJoystickDirection(clay::InputHandlerXR::Hand::RIGHT);
 
-    mCamera_.updateWithJoystickInput(
+    const auto& rightHandPose = ((clay::AppXR &) mApp_).getInputHandler().getAimPose(clay::InputHandlerXR::Hand::RIGHT);
+    const glm::quat rightHandOrientation(rightHandPose.orientation.w, rightHandPose.orientation.x, rightHandPose.orientation.y, rightHandPose.orientation.z);
+    glm::vec3 rightHandPosition = glm::vec3(rightHandPose.position.x,rightHandPose.position.y,rightHandPose.position.z);
+
+    const auto& leftHandPose = ((clay::AppXR&)mApp_).getInputHandler().getAimPose(clay::InputHandlerXR::Hand::LEFT);
+    const glm::quat leftHandOrientation(leftHandPose.orientation.w, leftHandPose.orientation.x, leftHandPose.orientation.y, leftHandPose.orientation.z);
+    glm::vec3 leftHandPosition = glm::vec3(leftHandPose.position.x, leftHandPose.position.y, leftHandPose.position.z);
+    const auto headPose = ((clay::AppXR&)mApp_).getInputHandler().getHeadPose();
+
+    // update camera with input
+    mCameraController_.updateWithJoystickInput(
         {joyDirLeft.x, joyDirLeft.y},
         {joyDirRight.x, joyDirRight.y},
         0.01f * 2.0f,
         1.0f/2.0f * 2.0f,
-        mpApp_->getInputHandler().getHeadPose()
+        headPose
     );
+    const glm::vec3 cameraPosition = mpFocusCamera_->getPosition();
+    const glm::quat cameraOrientation = mpFocusCamera_->getOrientation();
+
+    // Rotate hands to match camera
+    const glm::vec3 rotatedRight = cameraOrientation * rightHandPosition;
+    const glm::vec3 rotatedLeft = cameraOrientation * leftHandPosition;
+
+    rightHandPosition = cameraPosition + rotatedRight;
+    leftHandPosition = cameraPosition  + rotatedLeft;
+
+    {
+        // update left hand
+        mLeftHandEntity_.setOrientation(cameraOrientation * leftHandOrientation);
+        mLeftHandEntity_.setPosition(leftHandPosition);
+    }
+    {
+        // update right hand
+        mRightHandEntity_.setOrientation(cameraOrientation * rightHandOrientation);
+        mRightHandEntity_.setPosition(rightHandPosition);
+
+        // highlight sphere if right hand is pointing at it
+        const auto targetPosition = mTexturedSphere_.getPosition();
+        const glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), targetPosition);
+
+        const glm::vec3 rightHandForward = glm::normalize(rightHandOrientation * cameraOrientation * glm::vec3{0, 0, -1});
+
+        if (clay::utils::isRayIntersectingSphere(rightHandPosition, rightHandForward, targetPosition, 0.5)) {
+            mHighLight = true;
+        } else {
+            mHighLight = false;
+        }
+
+        // point with right hand
+        mSandboxGUI_->pointAt(
+            rightHandPosition,
+            rightHandForward
+        );
+    }
+    // rotate the sphere and text
+    mTexturedSphere_.getOrientation() *= glm::angleAxis(glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    mTextEntity_.getOrientation() *= glm::angleAxis(glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 void SandboxScene::render(clay::IGraphicsContext& gContext) {
-    auto gContextVR = dynamic_cast<clay::GraphicsContextXR&>(gContext);
-    glm::mat4 glmProj = xr::utils::computeProjectionMatrix(gContextVR.view.fov, mCamera_.nearZ, mCamera_.farZ);
-    glm::mat4 glmView = xr::utils::computeViewMatrix(gContextVR.view.pose, mCamera_.getPosition(), mCamera_.getOrientation());
+    auto& gContextVR = dynamic_cast<clay::GraphicsContextXR&>(gContext);
+    // First draw content without updating stencil
+    gContextVR.graphicsAPI.stencilFunc(clay::IGraphicsAPI::TestFunction::ALWAYS, 0xFF);
+    gContextVR.graphicsAPI.stencilMask(0x00); // Prevent writing to stencil buffer
+    gContextVR.renderer.setUBO(gContextVR.getRendererES().getCameraWorldLockedUBO());
 
-    mpSimpleShader_->bind();
-    mpSimpleShader_->setMat4("projection",  glmProj);
+    // draw hands
+    mLeftHandEntity_.render(gContext);
+    mRightHandEntity_.render(gContext);
 
-    // Left hand
-    {
-        const auto& handPose = mpApp_->getInputHandler().getAimPose(clay::InputHandlerXR::Hand::LEFT);
-        glm::quat handOrientation(handPose.orientation.w, handPose.orientation.x, handPose.orientation.y, handPose.orientation.z);
-        glm::vec3 handScale(0.01f, 0.01f, 1.0f);
-
-        // Calculate hand position relative to the camera's orientation
-        glm::vec3 handPosition = glm::vec3(handPose.position.x, handPose.position.y, handPose.position.z);
-
-        // Apply camera's orientation to hand position
-        glm::mat4 rotationMatrix4 = glm::mat4_cast(handOrientation);
-        glm::mat4 thisScaleMatrix = glm::scale(glm::mat4(1.0f), handScale);
-        glm::mat4 thisTranslationMatrix = glm::translate(glm::mat4(1.0f), handPosition);
-
-        // Update model matrix in shader
-        glm::mat4 glmView2 = xr::utils::computeViewMatrix(gContextVR.view.pose);
-        mpSimpleShader_->setMat4("view", glmView2);
-        mpSimpleShader_->setMat4("model", thisTranslationMatrix * rotationMatrix4 * thisScaleMatrix);
-        mpSimpleShader_->setVec4("uColor", {1.0f,1.0f,0.0f, 1.0f});
-        // mpCubeModel_->render(*mpSimpleShader_);
-        mpCubeMesh_->render(*mpSimpleShader_);
-    }
-    // Right hand
-    {
-        const auto& handPose = mpApp_->getInputHandler().getAimPose(clay::InputHandlerXR::Hand::RIGHT);
-        glm::quat handOrientation(handPose.orientation.w, handPose.orientation.x, handPose.orientation.y, handPose.orientation.z);
-        glm::vec3 handScale(0.01f, 0.01f, 1.0f);
-
-        // Calculate hand position relative to the camera's orientation
-        glm::vec3 handPosition = glm::vec3(handPose.position.x, handPose.position.y, handPose.position.z);
-
-        // Apply camera's orientation to hand position
-        glm::mat4 rotationMatrix4 = glm::mat4_cast(handOrientation);
-        glm::mat4 thisScaleMatrix = glm::scale(glm::mat4(1.0f), handScale);
-        glm::mat4 thisTranslationMatrix = glm::translate(glm::mat4(1.0f), handPosition);
-
-        // Update model matrix in shader
-        glm::mat4 glmView2 = xr::utils::computeViewMatrix(gContextVR.view.pose);
-        mpSimpleShader_->setMat4("view", glmView2);
-        mpSimpleShader_->setMat4("model", thisTranslationMatrix * rotationMatrix4 * thisScaleMatrix);
-        mpSimpleShader_->setVec4("uColor", {1.0f,1.0f,0.0f, 1.0f});
-        // mpCubeModel_->render(*mpSimpleShader_);
-        mpCubeMesh_->render(*mpSimpleShader_);
-        // point with right hand
-        mSandboxGUI_->pointAt(
-            handPosition + mCamera_.getPosition(),
-            glm::normalize(handOrientation * glm::conjugate(mCamera_.getOrientation()) * glm::vec3{0, 0, -1})
-        );
-    }
     // Texture Sphere
     {
-        static int count = 0;
-        mpSimpleShader_->bind();
+        if (mHighLight) {
+            // draw content while updating stencil buffer
+            gContextVR.graphicsAPI.stencilFunc(clay::IGraphicsAPI::TestFunction::ALWAYS, 0xFF);
+            gContextVR.graphicsAPI.stencilMask(0xFF);
+            mTexturedSphere_.render(gContext);
 
-        glm::vec3 rotation(0,++count,0);
-        glm::vec3 scale(1,1,1);
-        glm::vec3 position(-1,0,-2);
+            // second pass
+            {
+                // draw content only where stencil has not been updated yet
+                gContextVR.graphicsAPI.stencilFunc(clay::IGraphicsAPI::TestFunction::NOTEQUAL, 0xFF);
+                gContextVR.graphicsAPI.stencilMask(0x00);
+                // slightly scale up and set color for highlight
+                mpSolidShader_->bind();
+                mpSolidShader_->setMat4("uScaleMat", glm::scale(glm::mat4(1.0f), {1.1f, 1.1f, 1.1f}));
+                mpSolidShader_->setVec4("uSolidColor", {1.0f, 1.0f, 0.0f, 1.0f});
+                mTexturedSphere_.render(gContext, *mpSolidShader_);
 
-        glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1), glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-
-        glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), scale);
-        glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), position);
-        mpSimpleShader_->setMat4("model", translationMatrix * rotationMatrix * scaleMatrix);
-
-        // draw textured cube
-        mpTextureShader_->bind();
-        mpTextureShader_->setMat4("view", glmView);
-        mpTextureShader_->setMat4("projection",  glmProj);
-        mpTextureShader_->setMat4("model", translationMatrix * rotationMatrix * scaleMatrix);
-
-        glActiveTexture(GL_TEXTURE0 + 0);
-        glBindTexture(GL_TEXTURE_2D, mpVTexture_->getId());
-        mpTextureShader_->setInt("theTexture", 0);
-
-        // mpSphereModel_->render(*mpTextureShader_);
-        mpSphereMesh_->render(*mpTextureShader_);
+                gContextVR.graphicsAPI.stencilFunc(clay::IGraphicsAPI::TestFunction::ALWAYS, 0xFF);
+                gContextVR.graphicsAPI.stencilMask(0xFF);
+            }
+        } else {
+            // draw content normally without using the stencil buffer
+            mTexturedSphere_.render(gContext);
+        }
     }
-
-    // Font
-    {
-        static int count = 0;
-
-        glm::vec3 rotation(0.0f,++count,0.0f);
-        glm::vec3 scale(1,1,1);
-        glm::vec3 position(1,0,-2);
-
-        glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1), glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-
-        glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), scale);
-        glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), position);
-
-        renderFont(
-            "HELLO WORLD",
-            glmView,
-            glmProj,
-            translationMatrix * rotationMatrix * scaleMatrix,
-            *mpConsolasFont_,
-            {.01f,.01f,.01f},
-            {1,1,1}
-        );
-    }
-
-
+    // Draw sphere at local space origin
+    mCenterSphere_.render(gContext);
+    // Text
+    mTextEntity_.render(gContext);
     // GUI
-    mSandboxGUI_->render(glmView, glmProj);
-    // testGUI.render(glmView, glmProj, width, height);
+    mSandboxGUI_->render(gContext);
 }
 
 void SandboxScene::playSound() {
-    mpApp_->getAudioManager().playSound(mpBeepDeepAudio_->getId());
+    mApp_.getAudioManager().playSound(mpBeepDeepAudio_->getId());
 }
 
-void SandboxScene::renderFont(const std::string& text,
-                               const glm::mat4& view,
-                               const glm::mat4& proj,
-                               const glm::mat4& modelMat,
-                               const clay::Font& font,
-                               const glm::vec3 &scale,
-                               const glm::vec3 &color) {
-    // activate corresponding render state
-    mpTextShader_->bind();
-    mpTextShader_->setVec3("textColor", color);
-    mpTextShader_->setMat4("uView", view);
-    mpTextShader_->setMat4("uProj", proj);
-    glActiveTexture(GL_TEXTURE0);
-    glBindVertexArray(font.getVAO());
+void SandboxScene::renderGUI() { }
 
-    // Calculate the total width of the text
-    float totalWidth = 0.0f;
-    for (const char& c : text) {
-        const clay::Font::Character* ch = font.getCharInfo(c);
-        if (ch != nullptr) {
-            totalWidth += (ch->advance >> 6) * scale.x;
-        }
+void SandboxScene::assembleResources() {
+    // Cube
+    {
+        std::unique_ptr<clay::Model> cubeModel = std::make_unique<clay::Model>();
+        cubeModel->addSharedMesh(
+            mApp_.getResources().getResource<clay::Mesh>("Cube")
+        );
+        mResources_.addResource(std::move(cubeModel), "Cube");
     }
-
-    float startX = -totalWidth / 2.0f; // Center horizontally around the origin
-
-    // iterate through all characters
-    for (const char& c : text) {
-        const clay::Font::Character* ch = font.getCharInfo(c);
-
-        if (ch != nullptr) {
-            float xpos = startX + ch->bearing.x * scale.x;
-            float ypos = - (ch->size.y - ch->bearing.y) * scale.y; // Adjust for Y-axis to center vertically around the origin
-
-            float w = ch->size.x * scale.x;
-            float h = ch->size.y * scale.y;
-            // update VBO for each character
-            float vertices[6][4] = {
-                    { xpos,     ypos + h,   0.0f, 0.0f },
-                    { xpos,     ypos,       0.0f, 1.0f },
-                    { xpos + w, ypos,       1.0f, 1.0f },
-
-                    { xpos,     ypos + h,   0.0f, 0.0f },
-                    { xpos + w, ypos,       1.0f, 1.0f },
-                    { xpos + w, ypos + h,   1.0f, 0.0f }
-            };
-            // render glyph texture over quad
-            glBindTexture(GL_TEXTURE_2D, ch->textureId);
-            // update content of VBO memory
-            glBindBuffer(GL_ARRAY_BUFFER, font.getVBO());
-            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); // be sure to use glBufferSubData and not glBufferData
-
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-            // Apply the model matrix to the shader
-
-            mpTextShader_->setMat4("uModel", modelMat);
-
-            // render quad
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-            // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-            startX += (ch->advance >> 6) * scale.x; // bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
-        }
+    // Glove Left
+    {
+        std::unique_ptr<clay::Model> gloveModelLeft = std::make_unique<clay::Model>();
+        gloveModelLeft->addSharedMesh(
+            mApp_.getResources().getResource<clay::Mesh>("GloveLeft")
+        );
+        mResources_.addResource(std::move(gloveModelLeft), "GloveLeft");
     }
-    glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    // Glove Right
+    {
+        std::unique_ptr<clay::Model> gloveModelRight = std::make_unique<clay::Model>();
+        gloveModelRight->addSharedMesh(
+            mApp_.getResources().getResource<clay::Mesh>("GloveRight")
+        );
+        mResources_.addResource(std::move(gloveModelRight), "GloveRight");
+    }
+    // Plane
+    {
+        std::unique_ptr<clay::Model> planeModel = std::make_unique<clay::Model>();
+        planeModel->addSharedMesh(
+            mApp_.getResources().getResource<clay::Mesh>("RectPlane")
+        );
+        mResources_.addResource(std::move(planeModel), "RectPlane");
+    }
+    // Sphere
+    {
+        std::unique_ptr<clay::Model> sphereModel = std::make_unique<clay::Model>();
+        sphereModel->addSharedMesh(
+            mApp_.getResources().getResource<clay::Mesh>("Sphere")
+        );
+        mResources_.addResource(std::move(sphereModel), "Sphere");
+    }
 }

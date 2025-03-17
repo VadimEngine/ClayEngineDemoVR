@@ -1,9 +1,11 @@
 #version 320 es
 layout (location = 0) in vec4 vertex;  // <vec2 pos, vec2 tex>
 
+layout(std140, binding = 0) uniform ViewProj {
+    mat4 uView;
+    mat4 uProj;
+};
 uniform mat4 uModel;
-uniform mat4 uView;
-uniform mat4 uProj;
 
 out vec2 TexCoords;
 

@@ -1,31 +1,43 @@
 #pragma once
-#include "Application/Scenes/Space/SpaceGUI.h"
-#include <clay/graphics/opengles/GraphicsContextXR.h>
-#include <clay/graphics/common/Mesh.h>
+// clay
+#include <clay/graphics/xr/GraphicsContextXR.h>
+#include <clay/application/xr/CameraControllerXR.h>
+// project
+#include "Application/Scenes/Space/SpaceSceneGUI.h"
 
-class SpaceScene : public clay::SceneXR {
+class SpaceScene : public clay::BaseScene {
 public:
-    SpaceScene(clay::AppXR* theApp);
+    SpaceScene(clay::IApp& parentApp);
 
     ~SpaceScene() override;
 
-    virtual void update(float dt) override;
+    void update(float dt) override;
 
-    virtual void render(clay::IGraphicsContext& gContext) override;
+    void render(clay::IGraphicsContext& gContext) override;
+
+    void renderGUI() override;
+
+    void assembleResources() override;
+
+    bool& getUpdateSpace();
 
 private:
-    clay::ShaderProgram* mpSimpleShader_ = nullptr;
-    clay::ShaderProgram* mpTextShader_ = nullptr;
-    clay::ShaderProgram* mpTextureShader_ = nullptr;
+    clay::Entity mSkyBoxEntity;
+    clay::Entity mLeftHandEntity_;
+    clay::Entity mRightHandEntity_;
 
-    clay::Mesh* mpSphereMesh_ = nullptr;
-    clay::Mesh* mpPlaneMesh_ = nullptr;
-    clay::Mesh* mpCubeMesh_ = nullptr;
+    clay::Entity mPlanetEntity_;
+    clay::Entity mSunSphere_;
+    clay::Entity mMoonEntity_;
 
-    glm::vec3 mSunPosition_;
-    glm::vec3 mPlanetPosition_;
-    float mOrbitRadius_;
+    float planetOrbitSpeed = -1.0f/60.0f;
+    float moonOrbitSpeed = -2.0f/60.0f;
+    float mPlanetOrbitRadius_ = 2.0f;
+    float mMoonOrbitRadius_ = .5f;
 
-    // TODO add a plane gui
-    SpaceGUI* spaceGUI;
+    bool mUpdateSpace_ = true;
+
+    clay::CameraControllerXR mCameraController_;
+
+    std::unique_ptr<SpaceSceneGUI> mSpaceGUI_;
 };

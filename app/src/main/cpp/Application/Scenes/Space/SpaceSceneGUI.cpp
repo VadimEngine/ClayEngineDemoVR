@@ -1,14 +1,12 @@
-// third party
-#include <glm/gtc/matrix_transform.hpp>
 // project
-#include "Application/Scenes/Sandbox/SandboxScene.h"
+#include "Application/DemoAppXR.h"
 #include "Application/Scenes/Space/SpaceScene.h"
 // class
-#include "SandboxGUI.h"
+#include "Application/Scenes/Space/SpaceSceneGUI.h"
 
-SandboxGUI::SandboxGUI(clay::ShaderProgram* pTextureShader, clay::Mesh* pPlaneMesh, SandboxScene* theScene)
+SpaceSceneGUI::SpaceSceneGUI(clay::ShaderProgram* pTextureShader, clay::Mesh* pPlaneMesh, SpaceScene* theScene)
     : mShader_(pTextureShader), mPlaneMesh_(pPlaneMesh), mpScene_(theScene) {
-
+    mSceneRunning_ = mpScene_->getUpdateSpace();
     mTextureDim_ = {4128, 2208}; // imgui uses this size for its fbo
 
     // Generate and bind framebuffer
@@ -21,15 +19,15 @@ SandboxGUI::SandboxGUI(clay::ShaderProgram* pTextureShader, clay::Mesh* pPlaneMe
 
     // Allocate storage for the texture (RGBA format, unsigned byte type)
     glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RGBA,
-            mTextureDim_.x,
-            mTextureDim_.y,
-            0,
-            GL_RGBA,
-            GL_UNSIGNED_BYTE,
-            nullptr
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA,
+        mTextureDim_.x,
+        mTextureDim_.y,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        nullptr
     );
 
     // Set texture parameters
@@ -50,14 +48,14 @@ SandboxGUI::SandboxGUI(clay::ShaderProgram* pTextureShader, clay::Mesh* pPlaneMe
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-SandboxGUI::~SandboxGUI() = default;
+SpaceSceneGUI::~SpaceSceneGUI() = default;
 
-void SandboxGUI::setInputHandler(clay::InputHandlerXR* pInputHandler) {
+void SpaceSceneGUI::setInputHandler(clay::InputHandlerXR* pInputHandler) {
     mpInputHandler_ = pInputHandler;
 }
 
-void SandboxGUI::render(const glm::mat4& view, const glm::mat4& proj) {
-    // cache previous frame buffer
+void SpaceSceneGUI::render(clay::IGraphicsContext& gContext) {
+    // cache original frame buffer
     GLint previousFramebuffer;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFramebuffer);
     // Set to render onto texture frame buffer
@@ -65,15 +63,15 @@ void SandboxGUI::render(const glm::mat4& view, const glm::mat4& proj) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  // Clear the framebuffer
 
     startRender();
-    buildImGui(view, proj);
+    buildImGui(gContext);
     endRender();
 
-    // return back to previous frame buffer
+    // reset back to original frame buffer
     glBindFramebuffer(GL_FRAMEBUFFER, previousFramebuffer);
-    renderPlane(view, proj);
+    renderPlane(gContext);
 }
 
-void SandboxGUI::renderPlane(const glm::mat4& view, const glm::mat4& proj) {
+void SpaceSceneGUI::renderPlane(clay::IGraphicsContext& gContext) {
     // render plane
     mShader_->bind();
     glActiveTexture(GL_TEXTURE0 + 0);
@@ -86,18 +84,16 @@ void SandboxGUI::renderPlane(const glm::mat4& view, const glm::mat4& proj) {
 
     glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), mScale_);
     glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), mPosition_);
-    mShader_->setMat4("model", translationMatrix * rotationMatrix * scaleMatrix);
+    mShader_->setMat4("uModel", translationMatrix * rotationMatrix * scaleMatrix);
 
-    mShader_->setMat4("view", view);
-    mShader_->setMat4("projection",  proj);
     mPlaneMesh_->render(*mShader_);
 }
 
-void SandboxGUI::setPosition(const glm::vec3& position) {
+void SpaceSceneGUI::setPosition(const glm::vec3& position) {
     mPosition_ = position;
 }
 
-void SandboxGUI::setRotation(const glm::vec3& rotation) {
+void SpaceSceneGUI::setRotation(const glm::vec3& rotation) {
     mRotation_ = rotation;
     glm::vec4 normal4 = {0,1,0,0};
 
@@ -114,11 +110,11 @@ void SandboxGUI::setRotation(const glm::vec3& rotation) {
     mNormal_ = {rotatedNormal.x, rotatedNormal.y, rotatedNormal.z};
 }
 
-void SandboxGUI::setScale(const glm::vec3& scale) {
+void SpaceSceneGUI::setScale(const glm::vec3& scale) {
     mScale_ = scale;
 }
 
-void SandboxGUI::buildImGui(const glm::mat4& view, const glm::mat4& proj) {
+void SpaceSceneGUI::buildImGui(clay::IGraphicsContext& gContext) {
     ImGuiIO& io = ImGui::GetIO();
 
     io.MouseDrawCursor = true;
@@ -136,16 +132,11 @@ void SandboxGUI::buildImGui(const glm::mat4& view, const glm::mat4& proj) {
     }
 
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(mTextureDim_.x, mTextureDim_.y));  // Match framebuffer size
+    ImGui::SetNextWindowSize(ImVec2(mTextureDim_.x, mTextureDim_.y)); // Match framebuffer size
 
     ImGui::Begin("Plane");
     ImGui::SetWindowFontScale(6.0f);
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-    static int counter = 0;
-    if (ImGui::Button("Update Counter")) {
-        ++counter;
-    }
-    ImGui::Text("Counter: %i", counter);
     ImGui::Separator();
     ImGui::Text("Grab: %f, %f", mpInputHandler_->getGrabState(clay::InputHandlerXR::Hand::LEFT), mpInputHandler_->getGrabState(clay::InputHandlerXR::Hand::RIGHT));
     ImGui::Text("Trigger: %f, %f", mpInputHandler_->getTriggerState(clay::InputHandlerXR::Hand::LEFT), mpInputHandler_->getTriggerState(clay::InputHandlerXR::Hand::RIGHT));
@@ -159,13 +150,13 @@ void SandboxGUI::buildImGui(const glm::mat4& view, const glm::mat4& proj) {
     );
     const auto& leftGripPose = mpInputHandler_->getGripPose(clay::InputHandlerXR::Hand::LEFT);
     ImGui::Text("Left Grip Pose: (%f, %f, %f, %f) (%f, %f, %f)",
-               leftGripPose.orientation.x,
-               leftGripPose.orientation.y,
-               leftGripPose.orientation.z,
-               leftGripPose.orientation.w,
-               leftGripPose.position.x,
-               leftGripPose.position.y,
-               leftGripPose.position.z
+                leftGripPose.orientation.x,
+                leftGripPose.orientation.y,
+                leftGripPose.orientation.z,
+                leftGripPose.orientation.w,
+                leftGripPose.position.x,
+                leftGripPose.position.y,
+                leftGripPose.position.z
     );
     const auto& rightGripPose = mpInputHandler_->getGripPose(clay::InputHandlerXR::Hand::LEFT);
     ImGui::Text("Right Grip Pose: (%f, %f, %f, %f) (%f, %f, %f)",
@@ -199,10 +190,10 @@ void SandboxGUI::buildImGui(const glm::mat4& view, const glm::mat4& proj) {
     );
     const auto& leftJoystickDir = mpInputHandler_->getJoystickDirection(clay::InputHandlerXR::Hand::LEFT);
     ImGui::Text("Joystick dir: (%f, %f) (%f, %f)",
-               leftJoystickDir.x,
-               leftJoystickDir.y,
-               leftJoystickDir.x,
-               leftJoystickDir.y
+                leftJoystickDir.x,
+                leftJoystickDir.y,
+                leftJoystickDir.x,
+                leftJoystickDir.y
     );
     const auto& headPose = mpInputHandler_->getHeadPose();
     ImGui::Text("Headpose (%f, %f %f, %f) (%f %f %f)",
@@ -214,18 +205,43 @@ void SandboxGUI::buildImGui(const glm::mat4& view, const glm::mat4& proj) {
                 headPose.position.y,
                 headPose.position.z
     );
-    if (ImGui::Button("Play sound")) {
-        mpScene_->playSound();
+    if (ImGui::Checkbox("Scene Running: ", &mSceneRunning_)) {
+        mpScene_->getUpdateSpace() = mSceneRunning_;
     }
-    if (ImGui::Button("Next Scene")) {
-        mpScene_->getApp()->setScene(new SpaceScene(mpScene_->getApp()));
-        mpScene_->setRemove(true);
+    ImGui::Separator();
+
+    ImGui::BeginGroup();
+    if (ImGui::BeginListBox("##Scenes")) {
+        for (unsigned int i = 0; i < ((DemoAppXR&)(mpScene_->getApp())).getSceneDetails().size(); ++i) {
+            std::string elementName = "Entity " + ((DemoAppXR&)(mpScene_->getApp())).getSceneDetails()[i].mName_;
+            if (ImGui::Selectable(elementName.c_str(), i == mSelectedSceneIdx)) {
+                mSelectedSceneIdx = i;
+            }
+        }
+        ImGui::EndListBox();
     }
+    ImGui::EndGroup();
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    if (mSelectedSceneIdx < ((DemoAppXR&)(mpScene_->getApp())).getSceneDetails().size()) {
+        SceneDetail& displayScene = ((DemoAppXR&)(mpScene_->getApp())).getSceneDetails()[mSelectedSceneIdx];
+        ImGui::Text("%s", displayScene.mName_.c_str());
+        ImGui::Image(
+            displayScene.mPreviewTextureId_,
+            ImVec2(935, 500 ),
+            ImVec2(0, 0),
+            ImVec2(1, 1)
+        );
+        if (ImGui::Button("Start")) {
+            displayScene.mLoadScene_();
+        }
+    }
+    ImGui::EndGroup();
 
     ImGui::End();
 }
 
-void SandboxGUI::pointAt(glm::vec3 rayOrigin, glm::vec3 rayDir) {
+void SpaceSceneGUI::pointAt(glm::vec3 rayOrigin, glm::vec3 rayDir) {
     // Calculate the denominator
     float denominator = glm::dot(mNormal_, rayDir);
 

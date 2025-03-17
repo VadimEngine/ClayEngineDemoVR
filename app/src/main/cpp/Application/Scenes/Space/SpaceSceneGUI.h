@@ -1,23 +1,19 @@
 #pragma once
-// standard lib
 // third party
 #include <glm/glm.hpp>
 // clay
-#include <clay/application/xr/InputHandlerXR.h>
 #include <clay/graphics/common/Mesh.h>
 #include <clay/gui/xr/ImGuiComponentXR.h>
-// project
-#include "Application/Scenes/Common/XRUtils.h"
 
-class SandboxScene;
+class SpaceScene;
 
-class SandboxGUI : public clay::ImGuiComponentXR {
+class SpaceSceneGUI : public clay::ImGuiComponentXR {
 public:
-    SandboxGUI(clay::ShaderProgram* textureShader, clay::Mesh* pPlaneMesh, SandboxScene* theScene);
+    SpaceSceneGUI(clay::ShaderProgram* textureShader, clay::Mesh* pPlaneMesh, SpaceScene* theScene);
 
-    ~SandboxGUI();
+    ~SpaceSceneGUI();
 
-    void render(const glm::mat4& view, const glm::mat4& proj);
+    void render(clay::IGraphicsContext& gContext);
 
     void setPosition(const glm::vec3& position);
 
@@ -28,11 +24,10 @@ public:
     void pointAt(glm::vec3 origin, glm::vec3 direction);
 
     void setInputHandler(clay::InputHandlerXR* pInputHandler);
-
 private:
-    void buildImGui(const glm::mat4& view, const glm::mat4& proj);
+    void buildImGui(clay::IGraphicsContext& gContext);
 
-    void renderPlane(const glm::mat4& view, const glm::mat4& proj);
+    void renderPlane(clay::IGraphicsContext& gContext);
 
     clay::ShaderProgram* mShader_ = nullptr;
     unsigned int mFBO_;
@@ -51,7 +46,10 @@ private:
 
     clay::InputHandlerXR* mpInputHandler_ = nullptr;
 
-    SandboxScene* mpScene_;
-};
+    SpaceScene* mpScene_;
 
+    bool mSceneRunning_;
+
+    unsigned int mSelectedSceneIdx = 0;
+};
 

@@ -1,12 +1,11 @@
-// forward declare
-#include "Application/Scenes/Sandbox/SandboxScene.h"
-#include "Application/Scenes/Space/SpaceScene.h"
 // project
-#include "SpaceGUI.h"
+#include "Application/DemoAppXR.h"
+#include "Application/Scenes/Farm/FarmScene.h"
+// class
+#include "Application/Scenes/Farm/FarmSceneGUI.h"
 
-SpaceGUI::SpaceGUI(clay::ShaderProgram* pTextureShader, clay::Mesh* pPlaneMesh, SpaceScene* theScene)
-    : mShader_(pTextureShader), mPlaneMesh_(pPlaneMesh), mpScene_(theScene) {
-
+FarmSceneGUI::FarmSceneGUI(clay::ShaderProgram* pTextureShader, clay::Mesh* pPlaneMesh, FarmScene* theScene)
+    : mShader_(pTextureShader), mPlaneMesh_(pPlaneMesh), mpScene_(theScene){
     mTextureDim_ = {4128, 2208}; // imgui uses this size for its fbo
 
     // Generate and bind framebuffer
@@ -48,13 +47,7 @@ SpaceGUI::SpaceGUI(clay::ShaderProgram* pTextureShader, clay::Mesh* pPlaneMesh, 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-SpaceGUI::~SpaceGUI() = default;
-
-void SpaceGUI::setInputHandler(clay::InputHandlerXR* pInputHandler) {
-    mpInputHandler_ = pInputHandler;
-}
-
-void SpaceGUI::render(const glm::mat4& view, const glm::mat4& proj) {
+void FarmSceneGUI::render(clay::IGraphicsContext& gContext) {
     // cache previous frame buffer
     GLint previousFramebuffer;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFramebuffer);
@@ -63,39 +56,19 @@ void SpaceGUI::render(const glm::mat4& view, const glm::mat4& proj) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  // Clear the framebuffer
 
     startRender();
-    buildImGui(view, proj);
+    buildImGui(gContext);
     endRender();
 
     // return back to previous frame buffer
     glBindFramebuffer(GL_FRAMEBUFFER, previousFramebuffer);
-    renderPlane(view, proj);
+    renderPlane(gContext);
 }
 
-void SpaceGUI::renderPlane(const glm::mat4& view, const glm::mat4& proj) {
-    // render plane
-    mShader_->bind();
-    glActiveTexture(GL_TEXTURE0 + 0);
-    glBindTexture(GL_TEXTURE_2D, mFBTextureId_);
-    mShader_->setInt("theTexture", 0);
-
-    glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1), glm::radians(mRotation_.x), glm::vec3(1.0f, 0.0f, 0.0f));
-    rotationMatrix = glm::rotate(rotationMatrix, glm::radians(mRotation_.y), glm::vec3(0.0f, 1.0f, 0.0f));
-    rotationMatrix = glm::rotate(rotationMatrix, glm::radians(mRotation_.z), glm::vec3(0.0f, 0.0f, 1.0f));
-
-    glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), mScale_);
-    glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), mPosition_);
-    mShader_->setMat4("model", translationMatrix * rotationMatrix * scaleMatrix);
-
-    mShader_->setMat4("view", view);
-    mShader_->setMat4("projection",  proj);
-    mPlaneMesh_->render(*mShader_);
-}
-
-void SpaceGUI::setPosition(const glm::vec3& position) {
+void FarmSceneGUI::setPosition(const glm::vec3& position) {
     mPosition_ = position;
 }
 
-void SpaceGUI::setRotation(const glm::vec3& rotation) {
+void FarmSceneGUI::setRotation(const glm::vec3& rotation) {
     mRotation_ = rotation;
     glm::vec4 normal4 = {0,1,0,0};
 
@@ -112,115 +85,11 @@ void SpaceGUI::setRotation(const glm::vec3& rotation) {
     mNormal_ = {rotatedNormal.x, rotatedNormal.y, rotatedNormal.z};
 }
 
-void SpaceGUI::setScale(const glm::vec3& scale) {
+void FarmSceneGUI::setScale(const glm::vec3& scale) {
     mScale_ = scale;
 }
 
-void SpaceGUI::buildImGui(const glm::mat4& view, const glm::mat4& proj) {
-    ImGuiIO& io = ImGui::GetIO();
-
-    io.MouseDrawCursor = true;
-
-    io.MousePos = calMousePos;
-
-    const float rightTriggerState = mpInputHandler_->getTriggerState(clay::InputHandlerXR::Hand::RIGHT);
-
-    if (rightTriggerState > .1f) {
-        io.AddMouseButtonEvent(0, true);  // Simulate mouse down
-    }
-
-    if (rightTriggerState < .1f) {
-        io.AddMouseButtonEvent(0, false);  // Simulate mouse up
-    }
-
-    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(mTextureDim_.x, mTextureDim_.y));  // Match framebuffer size
-
-    ImGui::Begin("Plane");
-    ImGui::SetWindowFontScale(6.0f);
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-    static int counter = 0;
-    if (ImGui::Button("Update Counter")) {
-        ++counter;
-    }
-    ImGui::Text("Counter: %i", counter);
-    ImGui::Separator();
-    ImGui::Text("Grab: %f, %f", mpInputHandler_->getGrabState(clay::InputHandlerXR::Hand::LEFT), mpInputHandler_->getGrabState(clay::InputHandlerXR::Hand::RIGHT));
-    ImGui::Text("Trigger: %f, %f", mpInputHandler_->getTriggerState(clay::InputHandlerXR::Hand::LEFT), mpInputHandler_->getTriggerState(clay::InputHandlerXR::Hand::RIGHT));
-
-
-    ImGui::Text("Buttons: %i, %i, %i, %i",
-                mpInputHandler_->getButtonDown(clay::InputHandlerXR::Button::Y),
-                mpInputHandler_->getButtonDown(clay::InputHandlerXR::Button::X),
-                mpInputHandler_->getButtonDown(clay::InputHandlerXR::Button::B),
-                mpInputHandler_->getButtonDown(clay::InputHandlerXR::Button::A)
-    );
-    const auto& leftGripPose = mpInputHandler_->getGripPose(clay::InputHandlerXR::Hand::LEFT);
-    ImGui::Text("Left Grip Pose: (%f, %f, %f, %f) (%f, %f, %f)",
-                leftGripPose.orientation.x,
-                leftGripPose.orientation.y,
-                leftGripPose.orientation.z,
-                leftGripPose.orientation.w,
-                leftGripPose.position.x,
-                leftGripPose.position.y,
-                leftGripPose.position.z
-    );
-    const auto& rightGripPose = mpInputHandler_->getGripPose(clay::InputHandlerXR::Hand::LEFT);
-    ImGui::Text("Right Grip Pose: (%f, %f, %f, %f) (%f, %f, %f)",
-                rightGripPose.orientation.x,
-                rightGripPose.orientation.y,
-                rightGripPose.orientation.z,
-                rightGripPose.orientation.w,
-                rightGripPose.position.x,
-                rightGripPose.position.y,
-                rightGripPose.position.z
-    );
-    const auto& leftAimPose = mpInputHandler_->getAimPose(clay::InputHandlerXR::Hand::LEFT);
-    ImGui::Text("Left Aim Pose: (%f, %f, %f, %f) (%f, %f, %f)",
-                leftAimPose.orientation.x,
-                leftAimPose.orientation.y,
-                leftAimPose.orientation.z,
-                leftAimPose.orientation.w,
-                leftAimPose.position.x,
-                leftAimPose.position.y,
-                leftAimPose.position.z
-    );
-    const auto& rightAimPose = mpInputHandler_->getAimPose(clay::InputHandlerXR::Hand::LEFT);
-    ImGui::Text("Right Aim Pose: (%f, %f, %f, %f) (%f, %f, %f)",
-                rightAimPose.orientation.x,
-                rightAimPose.orientation.y,
-                rightAimPose.orientation.z,
-                rightAimPose.orientation.w,
-                rightAimPose.position.x,
-                rightAimPose.position.y,
-                rightAimPose.position.z
-    );
-    const auto& leftJoystickDir = mpInputHandler_->getJoystickDirection(clay::InputHandlerXR::Hand::LEFT);
-    ImGui::Text("Joystick dir: (%f, %f) (%f, %f)",
-                leftJoystickDir.x,
-                leftJoystickDir.y,
-                leftJoystickDir.x,
-                leftJoystickDir.y
-    );
-    const auto& headPose = mpInputHandler_->getHeadPose();
-    ImGui::Text("Headpose (%f, %f %f, %f) (%f %f %f)",
-                headPose.orientation.x,
-                headPose.orientation.y,
-                headPose.orientation.z,
-                headPose.orientation.w,
-                headPose.position.x,
-                headPose.position.y,
-                headPose.position.z
-    );
-    if (ImGui::Button("Next Scene")) {
-        mpScene_->getApp()->setScene(new SandboxScene(mpScene_->getApp()));
-        mpScene_->setRemove(true);
-    }
-
-    ImGui::End();
-}
-
-void SpaceGUI::pointAt(glm::vec3 rayOrigin, glm::vec3 rayDir) {
+void FarmSceneGUI::pointAt(glm::vec3 rayOrigin, glm::vec3 rayDir) {
     // Calculate the denominator
     float denominator = glm::dot(mNormal_, rayDir);
 
@@ -269,4 +138,157 @@ void SpaceGUI::pointAt(glm::vec3 rayOrigin, glm::vec3 rayDir) {
     pixelY = glm::clamp(pixelY, 0, mTextureDim_.y - 1);
 
     calMousePos = ImVec2(pixelX, pixelY);
+}
+
+void FarmSceneGUI::setInputHandler(clay::InputHandlerXR* pInputHandler) {
+    mpInputHandler_ = pInputHandler;
+}
+
+void FarmSceneGUI::buildImGui(clay::IGraphicsContext& gContext) {
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.MouseDrawCursor = true;
+
+    io.MousePos = calMousePos;
+
+    const float rightTriggerState = mpInputHandler_->getTriggerState(clay::InputHandlerXR::Hand::RIGHT);
+
+    if (rightTriggerState > .1f) {
+        io.AddMouseButtonEvent(0, true);  // Simulate mouse down
+    }
+
+    if (rightTriggerState < .1f) {
+        io.AddMouseButtonEvent(0, false);  // Simulate mouse up
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(mTextureDim_.x, mTextureDim_.y));  // Match framebuffer size
+
+    ImGui::Begin("Plane");
+    ImGui::SetWindowFontScale(6.0f);
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+    ImGui::Separator();
+    ImGui::Text("Grab: %f, %f", mpInputHandler_->getGrabState(clay::InputHandlerXR::Hand::LEFT), mpInputHandler_->getGrabState(clay::InputHandlerXR::Hand::RIGHT));
+    ImGui::Text("Trigger: %f, %f", mpInputHandler_->getTriggerState(clay::InputHandlerXR::Hand::LEFT), mpInputHandler_->getTriggerState(clay::InputHandlerXR::Hand::RIGHT));
+
+    ImGui::Text("Buttons: Y: %i, X: %i, B: %i, A: %i",
+                mpInputHandler_->getButtonDown(clay::InputHandlerXR::Button::Y),
+                mpInputHandler_->getButtonDown(clay::InputHandlerXR::Button::X),
+                mpInputHandler_->getButtonDown(clay::InputHandlerXR::Button::B),
+                mpInputHandler_->getButtonDown(clay::InputHandlerXR::Button::A)
+    );
+    const auto& leftGripPose = mpInputHandler_->getGripPose(clay::InputHandlerXR::Hand::LEFT);
+    ImGui::Text("Left Grip Pose: (%f, %f, %f, %f) (%f, %f, %f)",
+                leftGripPose.orientation.x,
+                leftGripPose.orientation.y,
+                leftGripPose.orientation.z,
+                leftGripPose.orientation.w,
+                leftGripPose.position.x,
+                leftGripPose.position.y,
+                leftGripPose.position.z
+    );
+    const auto& rightGripPose = mpInputHandler_->getGripPose(clay::InputHandlerXR::Hand::RIGHT);
+    ImGui::Text("Right Grip Pose: (%f, %f, %f, %f) (%f, %f, %f)",
+                rightGripPose.orientation.x,
+                rightGripPose.orientation.y,
+                rightGripPose.orientation.z,
+                rightGripPose.orientation.w,
+                rightGripPose.position.x,
+                rightGripPose.position.y,
+                rightGripPose.position.z
+    );
+    const auto& leftAimPose = mpInputHandler_->getAimPose(clay::InputHandlerXR::Hand::LEFT);
+    ImGui::Text("Left Aim Pose: (%f, %f, %f, %f) (%f, %f, %f)",
+                leftAimPose.orientation.x,
+                leftAimPose.orientation.y,
+                leftAimPose.orientation.z,
+                leftAimPose.orientation.w,
+                leftAimPose.position.x,
+                leftAimPose.position.y,
+                leftAimPose.position.z
+    );
+    const auto& rightAimPose = mpInputHandler_->getAimPose(clay::InputHandlerXR::Hand::RIGHT);
+    ImGui::Text("Right Aim Pose: (%f, %f, %f, %f) (%f, %f, %f)",
+                rightAimPose.orientation.x,
+                rightAimPose.orientation.y,
+                rightAimPose.orientation.z,
+                rightAimPose.orientation.w,
+                rightAimPose.position.x,
+                rightAimPose.position.y,
+                rightAimPose.position.z
+    );
+    const auto& leftJoystickDir = mpInputHandler_->getJoystickDirection(clay::InputHandlerXR::Hand::LEFT);
+    ImGui::Text("Left Joystick dir: (%f, %f) (%f, %f)",
+                leftJoystickDir.x,
+                leftJoystickDir.y,
+                leftJoystickDir.x,
+                leftJoystickDir.y
+    );
+    const auto& rightJoystickDir = mpInputHandler_->getJoystickDirection(clay::InputHandlerXR::Hand::RIGHT);
+    ImGui::Text("Right Joystick dir: (%f, %f) (%f, %f)",
+                rightJoystickDir.x,
+                rightJoystickDir.y,
+                rightJoystickDir.x,
+                rightJoystickDir.y
+    );
+    const auto& headPose = mpInputHandler_->getHeadPose();
+    ImGui::Text("Headpose (%f, %f %f, %f) (%f %f %f)",
+                headPose.orientation.x,
+                headPose.orientation.y,
+                headPose.orientation.z,
+                headPose.orientation.w,
+                headPose.position.x,
+                headPose.position.y,
+                headPose.position.z
+    );
+    ImGui::Separator();
+
+    ImGui::BeginGroup();
+    if (ImGui::BeginListBox("##Scenes")) {
+        for (unsigned int i = 0; i < ((DemoAppXR&)(mpScene_->getApp())).getSceneDetails().size(); ++i) {
+            std::string elementName = "Entity " + ((DemoAppXR&)(mpScene_->getApp())).getSceneDetails()[i].mName_;
+            if (ImGui::Selectable(elementName.c_str(), i == mSelectedSceneIdx)) {
+                mSelectedSceneIdx = i;
+            }
+        }
+        ImGui::EndListBox();
+    }
+    ImGui::EndGroup();
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    if (mSelectedSceneIdx < ((DemoAppXR&)(mpScene_->getApp())).getSceneDetails().size()) {
+        SceneDetail& displayScene = ((DemoAppXR&)(mpScene_->getApp())).getSceneDetails()[mSelectedSceneIdx];
+        ImGui::Text("%s", displayScene.mName_.c_str());
+        ImGui::Image(
+            displayScene.mPreviewTextureId_,
+            ImVec2(935, 500 ),
+            ImVec2(0, 0),
+            ImVec2(1, 1)
+        );
+        if (ImGui::Button("Start")) {
+            displayScene.mLoadScene_();
+        }
+    }
+    ImGui::EndGroup();
+
+    ImGui::End();
+}
+
+void FarmSceneGUI::renderPlane(clay::IGraphicsContext& gContext) {
+    // render plane
+    mShader_->bind();
+    glActiveTexture(GL_TEXTURE0 + 0);
+    glBindTexture(GL_TEXTURE_2D, mFBTextureId_);
+    mShader_->setInt("theTexture", 0);
+
+    glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1), glm::radians(mRotation_.x), glm::vec3(1.0f, 0.0f, 0.0f));
+    rotationMatrix = glm::rotate(rotationMatrix, glm::radians(mRotation_.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    rotationMatrix = glm::rotate(rotationMatrix, glm::radians(mRotation_.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+    glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), mScale_);
+    glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), mPosition_);
+    mShader_->setMat4("uModel", translationMatrix * rotationMatrix * scaleMatrix);
+    
+    mPlaneMesh_->render(*mShader_);
 }
