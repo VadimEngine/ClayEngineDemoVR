@@ -231,7 +231,7 @@ void SpaceScene::render(clay::IGraphicsContext& gContext) {
     auto gContextVR = dynamic_cast<clay::GraphicsContextXR&>(gContext);
     // Draw head locked content
     {
-        gContextVR.renderer.setUBO(gContextVR.getRendererES().getCameraHeadLockedUBO());
+        gContextVR.renderer.setCameraUBO(gContextVR.getRendererES().getCameraHeadLockedUBO());
         // draw skybox
         {
             gContextVR.graphicsAPI.enable(clay::IGraphicsAPI::Capability::CULL_FACE);
@@ -243,7 +243,7 @@ void SpaceScene::render(clay::IGraphicsContext& gContext) {
         }
     }
     // Revert back to world lock render
-    gContextVR.renderer.setUBO(gContextVR.getRendererES().getCameraWorldLockedUBO());
+    gContextVR.renderer.setCameraUBO(gContextVR.getRendererES().getCameraWorldLockedUBO());
     // render hands
     mLeftHandEntity_.render(gContext);
     mRightHandEntity_.render(gContext);

@@ -135,7 +135,7 @@ void FarmScene::update(float dt) {
 void FarmScene::render(clay::IGraphicsContext& gContext) {
     auto& gContextVR = dynamic_cast<clay::GraphicsContextXR&>(gContext);
     {
-        gContextVR.renderer.setUBO(gContextVR.getRendererES().getCameraHeadLockedUBO());
+        gContextVR.renderer.setCameraUBO(gContextVR.getRendererES().getCameraHeadLockedUBO());
         // draw skybox
         {
             gContextVR.graphicsAPI.enable(clay::IGraphicsAPI::Capability::CULL_FACE);
@@ -147,12 +147,12 @@ void FarmScene::render(clay::IGraphicsContext& gContext) {
         }
     }
     // Revert back to world lock render
-    gContextVR.renderer.setUBO(gContextVR.getRendererES().getCameraWorldLockedUBO());
+    gContextVR.renderer.setCameraUBO(gContextVR.getRendererES().getCameraWorldLockedUBO());
 
     // First draw content without updating stencil
     gContextVR.graphicsAPI.stencilFunc(clay::IGraphicsAPI::TestFunction::ALWAYS, 0xFF);
     gContextVR.graphicsAPI.stencilMask(0x00); // Prevent writing to stencil buffer
-    gContextVR.renderer.setUBO(gContextVR.getRendererES().getCameraWorldLockedUBO());
+    gContextVR.renderer.setCameraUBO(gContextVR.getRendererES().getCameraWorldLockedUBO());
 
     // draw hands
     mLeftHandEntity_.render(gContext);

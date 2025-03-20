@@ -157,7 +157,7 @@ void SandboxScene::render(clay::IGraphicsContext& gContext) {
     // First draw content without updating stencil
     gContextVR.graphicsAPI.stencilFunc(clay::IGraphicsAPI::TestFunction::ALWAYS, 0xFF);
     gContextVR.graphicsAPI.stencilMask(0x00); // Prevent writing to stencil buffer
-    gContextVR.renderer.setUBO(gContextVR.getRendererES().getCameraWorldLockedUBO());
+    gContextVR.renderer.setCameraUBO(gContextVR.getRendererES().getCameraWorldLockedUBO());
 
     // draw hands
     mLeftHandEntity_.render(gContext);
