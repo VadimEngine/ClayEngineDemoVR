@@ -1,6 +1,6 @@
 # ClayEngine Demo VR
 
-Demo application of using the ClayEngine static library (https://github.com/VadimEngine/ClayEngine) to build a VR application with Android and OpenGLES. This application allows loading and using resources to build scenes that the use can navigate and interact with. This application primarily uses OpenXR from ClayEngine for the VR functionality
+Demo application of using the ClayEngine static library (https://github.com/VadimEngine/ClayEngine) to build a VR application with Android and OpenGLES. This application allows loading and using resources to build scenes that the user can navigate and interact with. This application primarily uses OpenXR from ClayEngine for the VR functionality
 
 ![alt text](./Screenshots/VRDemoGif.gif)
 
@@ -8,15 +8,15 @@ Demo application of using the ClayEngine static library (https://github.com/Vadi
 
 ### Sandbox Scene
 
-Sandbox scene renders rods at the user's controller's aim direction. A loaded 3d model with is rendered with a loaded texture. A sample string is rendered with a loaded font. And an Imgui window is rendered unto a plane and can be interacted with controller. The gui displays the user's controller and headset state. A sample audio can be played with a button and the scene can be swapped
+Sandbox scene renders hands at the user's controller's. A loaded 3d model with a loaded texture and a sample string is rendered with a loaded font. And an Imgui window is rendered onto a plane and can be interacted with controller. The gui displays the user's controller and headset state. A sample audio can be played with a button and the other scenes can be previewed and switched to.
 
 ### Space Scene
 
-Similar to Sandbox scene but instead, a sun with an orbiting planet is rendered
+Similar to Sandbox scene but instead, a sun with an orbiting planet and moon is rendered
 
 ### Farm Scene
 
-Similar to Sandbox scene but instead, A nature scene is rendered. 
+Similar to Sandbox scene but instead, a nature scene is rendered. 
 
 ## Build
 
